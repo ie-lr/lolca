@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Light of Life Christian Academy (LOLCA) - Management System</title>
+  <link rel="icon" type="image/png" href="assets/images/LOLCA logo circle shape.png">
+  <link rel="stylesheet" href="assets/css/tokens.css">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+
+  <!-- =======================================================================
+       PORTAL GATEWAY SELECTOR
+       ======================================================================= -->
+  <main class="gateway-container">
+    <div id="bgSlideshow" class="login-bg-slideshow"></div>
+    <div class="login-bg-overlay"></div>
+
+    <div class="gateway-card" style="max-width: 860px;">
+      <!-- Left: Portal Selection Cards -->
+      <div class="gateway-form-pane">
+        <div style="margin-bottom: 24px;">
+          <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #0284c7; background: #e0f2fe; padding: 4px 10px; border-radius: 9999px;">
+            Official School System
+          </span>
+          <h2 style="font-size: 24px; font-weight: 800; color: #1e293b; margin-top: 8px;">
+            LOLCA School Management
+          </h2>
+          <p class="text-muted" style="font-size: 13.5px;">
+            Select your portal to continue
+          </p>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:16px; margin-bottom:20px;">
+          <!-- Staff Portal Card -->
+          <a href="admin.html" class="action-card-tile" style="text-decoration:none;">
+            <div class="card-icon-square" style="background:#1e3a8a;">
+              <img src="assets/icons/user-key.png" alt="Staff">
+            </div>
+            <div class="card-tile-info">
+              <span class="card-tile-title" style="color:#1e3a8a;">ADMIN & TEACHER PORTAL</span>
+              <span class="card-tile-desc">Class management, grade marksheet, fees & payment receipts</span>
+            </div>
+          </a>
+
+          <!-- Student Portal Card -->
+          <a href="student.html" class="action-card-tile" style="text-decoration:none;">
+            <div class="card-icon-square" style="background:#0284c7;">
+              <img src="assets/icons/file-text.png" alt="Student">
+            </div>
+            <div class="card-tile-info">
+              <span class="card-tile-title" style="color:#0284c7;">STUDENT GRADE & RECEIPT PORTAL</span>
+              <span class="card-tile-desc">View and print 2-page terminal report cards and payment receipts</span>
+            </div>
+          </a>
+        </div>
+
+        <div style="border-top:1px solid #e2e8f0; padding-top:14px; font-size:12px; color:#64748b;">
+          Light Community, Jlazon, Lower Margibi / Montserrado County, Liberia
+        </div>
+      </div>
+
+      <!-- Right: Official School Branding -->
+      <div class="gateway-brand-pane">
+        <img src="assets/images/LOLCA logo circle shape.png" alt="LOLCA Crest" class="pane-crest">
+        <h1 class="pane-school-name">LIGHT OF LIFE CHRISTIAN ACADEMY</h1>
+        <p class="pane-motto">"Assuring Full Life Through Sound Academic and Spiritual Education"</p>
+        <div class="pane-info-tag">Established 2025 • Academic Year 2025-2026</div>
+      </div>
+    </div>
+  </main>
+
+  <script src="assets/js/config.js"></script>
+  <script>
+    // Slideshow animation
+    const images = [
+      'assets/images/65fa9b9a-2d1a-4e1e-995e-66f1dfc8fc0e.jfif',
+      'assets/images/4238c817-2e37-4eea-9a6d-7181f86554f3.jfif',
+      'assets/images/8079ddd5-119b-4b66-ad29-b01647b3a402.jfif',
+      'assets/images/859d8505-eba4-4a8c-89a2-3dbb2a9b77c5.jfif',
+      'assets/images/a7ad9bcb-5da6-4515-9703-cdac8306fb0f.jfif',
+      'assets/images/WhatsApp Image 2026-07-10 at 10.52.31 AM.jpeg'
+    ];
+    const container = document.getElementById('bgSlideshow');
+    if (container) {
+      images.forEach((src, idx) => {
+        const slide = document.createElement('div');
+        slide.className = 'slide' + (idx === 0 ? ' active' : '');
+        slide.style.backgroundImage = `url('${src}')`;
+        container.appendChild(slide);
+      });
+      let idx = 0;
+      setInterval(() => {
+        const slides = container.querySelectorAll('.slide');
+        if (!slides.length) return;
+        slides[idx].classList.remove('active');
+        idx = (idx + 1) % slides.length;
+        slides[idx].classList.add('active');
+      }, 5500);
+    }
+  </script>
+</body>
+</html>

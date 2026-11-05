@@ -1,0 +1,21 @@
+{
+  "name": "LOLCA Admin & Teacher Portal",
+  "short_name": "LOLCA Admin",
+  "description": "Administrative and teacher management system for Light of Life Christian Academy",
+  "start_url": "admin.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1e3a8a",
+  "icons": [
+    {
+      "src": "assets/icons/user-key.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/images/LOLCA logo circle shape.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

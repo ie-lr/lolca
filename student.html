@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LOLCA Student Portal - Light of Life Christian Academy</title>
+  <link rel="icon" type="image/png" href="assets/images/LOLCA logo circle shape.png">
+  <link rel="manifest" href="manifest-student.json">
+  <meta name="theme-color" content="#1e3a8a">
+  <link rel="stylesheet" href="assets/css/tokens.css">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+
+  <!-- =======================================================================
+       STUDENT LOGIN GATEWAY
+       ======================================================================= -->
+  <main id="viewGateway" class="gateway-container">
+    <div id="bgSlideshow" class="login-bg-slideshow"></div>
+    <div class="login-bg-overlay"></div>
+
+    <div class="gateway-card">
+      <div class="gateway-form-pane">
+        <div style="margin-bottom: 24px;">
+          <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #0284c7; background: #e0f2fe; padding: 4px 10px; border-radius: 9999px;">
+            Student & Parent Access
+          </span>
+          <h2 style="font-size: 24px; font-weight: 800; color: #1e293b; margin-top: 8px;">
+            Student Grade & Payment Portal
+          </h2>
+          <p class="text-muted" style="font-size: 13.5px;">
+            Enter your Student ID to view terminal report cards and official payment receipts
+          </p>
+        </div>
+
+        <form id="formStudentLogin">
+          <div class="form-group">
+            <label class="form-label" for="studentIdInput">Student Identification Number</label>
+            <input type="text" id="studentIdInput" class="input-field" 
+                   value="LOLCA-2025-001" required 
+                   placeholder="e.g. LOLCA-2025-001" style="font-family: monospace; font-size:16px; font-weight:700;">
+            <p class="text-muted" style="font-size: 12px; margin-top: 6px;">
+              Found on your registration badge or receipt (e.g. LOLCA-2025-001).
+            </p>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <span class="text-muted" style="font-size:12px;">Light of Life Christian Academy</span>
+            <a href="admin.html" style="font-size: 12px; color: #0284c7; font-weight: 600; text-decoration: none;">
+              Staff Login &rarr;
+            </a>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 15px;">
+            <img src="assets/icons/file-text.png" class="sys-icon" alt="Sign In">
+            Access My Student Portal
+          </button>
+        </form>
+      </div>
+
+      <div class="gateway-brand-pane">
+        <img src="assets/images/LOLCA logo circle shape.png" alt="LOLCA Crest" class="pane-crest">
+        <h1 class="pane-school-name">LIGHT OF LIFE CHRISTIAN ACADEMY</h1>
+        <p class="pane-motto">"Assuring Full Life Through Sound Academic and Spiritual Education"</p>
+        <div class="pane-info-tag">Official Student Portal • 2025-2026</div>
+      </div>
+    </div>
+  </main>
+
+  <!-- =======================================================================
+       STUDENT WORKSTATION (REPORT CARDS & PAYMENT RECEIPTS)
+       ======================================================================= -->
+  <div id="viewStudentPortal" class="hidden">
+    <!-- Header -->
+    <header class="admin-top-navbar no-print" style="position:static; height:68px;">
+      <div class="top-nav-left">
+        <img src="assets/images/LOLCA logo circle shape.png" style="width:38px; height:38px;" alt="LOLCA">
+        <div>
+          <span style="font-size:15px; font-weight:800; color:#1e3a8a;">LIGHT OF LIFE CHRISTIAN ACADEMY</span>
+          <div style="font-size:11.5px; color:#64748b;">Official Student Information Center</div>
+        </div>
+      </div>
+
+      <div class="top-nav-right">
+        <div style="display:flex; align-items:center; gap:8px; background:#f1f5f9; padding:5px 12px; border-radius:9999px;">
+          <img src="assets/icons/circle-user-round.png" style="width:24px; height:24px;" alt="Student">
+          <div style="font-size:12px;">
+            <strong id="studentPortalName">Student Name</strong>
+            <span id="studentPortalClass" style="color:#64748b; margin-left:4px;">Grade</span>
+          </div>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm btn-logout">
+          <img src="assets/icons/log-out.png" class="sys-icon" alt="Logout">
+          Sign Out
+        </button>
+      </div>
+    </header>
+
+    <div style="max-width:1100px; margin:24px auto; padding:0 20px;">
+      <!-- Navigation Tabs -->
+      <div class="no-print" style="display:flex; gap:10px; margin-bottom:24px; border-bottom:1px solid #cbd5e1; padding-bottom:8px;">
+        <button type="button" id="tabBtnReportCard" class="btn btn-primary" onclick="showStudentSection('report')">
+          <img src="assets/icons/file-text.png" class="sys-icon" alt="Report">
+          Official 2-Page Report Card
+        </button>
+        <button type="button" id="tabBtnReceipt" class="btn btn-secondary" onclick="showStudentSection('receipt')">
+          <img src="assets/icons/landmark.png" class="sys-icon" alt="Receipt">
+          Payment Information & Receipts
+        </button>
+        <button type="button" class="btn btn-secondary" style="margin-left:auto;" onclick="window.print()">
+          <img src="assets/icons/download (2).png" class="sys-icon" alt="Print">
+          Print / Download Document
+        </button>
+      </div>
+
+      <!-- Section: Report Card -->
+      <div id="studentSectionReport">
+        <div id="studentOwnReportCardTarget"></div>
+      </div>
+
+      <!-- Section: Payment Receipt -->
+      <div id="studentSectionReceipt" class="hidden">
+        <div id="studentOwnReceiptTarget"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Global Loader -->
+  <div id="globalLoader" class="global-loader-overlay hidden">
+    <div class="loader-content">
+      <div class="loader-spinner"></div>
+      <div class="loader-text">Loading student records...</div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script>
+    function showStudentSection(sec) {
+      const rep = document.getElementById('studentSectionReport');
+      const rec = document.getElementById('studentSectionReceipt');
+      const btnRep = document.getElementById('tabBtnReportCard');
+      const btnRec = document.getElementById('tabBtnReceipt');
+
+      if (sec === 'report') {
+        rep.classList.remove('hidden');
+        rec.classList.add('hidden');
+        btnRep.className = 'btn btn-primary';
+        btnRec.className = 'btn btn-secondary';
+      } else {
+        rec.classList.remove('hidden');
+        rep.classList.add('hidden');
+        btnRec.className = 'btn btn-primary';
+        btnRep.className = 'btn btn-secondary';
+      }
+    }
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>

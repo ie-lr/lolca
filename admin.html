@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LOLCA Admin & Teacher Portal - Light of Life Christian Academy</title>
+  <link rel="icon" type="image/png" href="assets/images/LOLCA logo circle shape.png">
+  <link rel="manifest" href="manifest-admin.json">
+  <meta name="theme-color" content="#1e3a8a">
+  <link rel="stylesheet" href="assets/css/tokens.css">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+
+  <!-- =======================================================================
+       GATEWAY VIEW (ADMIN & TEACHER SIGN IN)
+       ======================================================================= -->
+  <main id="viewGateway" class="gateway-container">
+    <div id="bgSlideshow" class="login-bg-slideshow"></div>
+    <div class="login-bg-overlay"></div>
+
+    <div class="gateway-card">
+      <div class="gateway-form-pane">
+        <div style="margin-bottom: 20px;">
+          <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #0284c7; background: #e0f2fe; padding: 4px 10px; border-radius: 9999px;">
+            Official Staff Access
+          </span>
+          <h2 style="font-size: 24px; font-weight: 800; color: #1e293b; margin-top: 8px;">
+            Administrator & Teacher Portal
+          </h2>
+          <p class="text-muted" style="font-size: 13.5px;">
+            Sign in to manage classes, grades, fees, and report cards
+          </p>
+        </div>
+
+        <form id="formAdminLogin">
+          <div class="form-group">
+            <label class="form-label" for="adminEmail">Staff Email Address</label>
+            <input type="email" id="adminEmail" class="input-field" 
+                   value="chrisnentorbor@gmail.com" required 
+                   placeholder="e.g. chrisnentorbor@gmail.com">
+          </div>
+
+          <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label class="form-label" for="adminPassword" style="margin-bottom: 0;">Password</label>
+              <span class="text-muted" style="font-size: 11.5px;">2FA Protected</span>
+            </div>
+            <input type="password" id="adminPassword" class="input-field" 
+                   value="Admin@LOLCA2025" required placeholder="Enter password">
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; font-size: 13px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="adminRememberMe" checked>
+              <span>Keep me signed in</span>
+            </label>
+            <a href="student.html" style="font-size: 12px; color: #0284c7; font-weight: 600; text-decoration: none;">
+              Student Portal &rarr;
+            </a>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 15px;">
+            <img src="assets/icons/user-key.png" class="sys-icon" alt="Sign In">
+            Sign In to Workstation
+          </button>
+        </form>
+      </div>
+
+      <div class="gateway-brand-pane">
+        <img src="assets/images/LOLCA logo circle shape.png" alt="LOLCA Crest" class="pane-crest">
+        <h1 class="pane-school-name">LIGHT OF LIFE CHRISTIAN ACADEMY</h1>
+        <p class="pane-motto">"Assuring Full Life Through Sound Academic and Spiritual Education"</p>
+        <div class="pane-info-tag">Staff & Teacher Workstation • 2025-2026</div>
+      </div>
+    </div>
+  </main>
+
+  <!-- =======================================================================
+       ADMIN & TEACHER WORKSTATION (IMAGE 5 STYLE: LEFT PANE & CARDS TABS)
+       ======================================================================= -->
+  <div id="viewAdminWorkstation" class="hidden">
+    <div class="admin-layout-wrapper">
+      <!-- LEFT SIDEBAR PANE -->
+      <aside class="admin-sidebar no-print">
+        <div class="sidebar-brand-box">
+          <img src="assets/images/LOLCA logo circle shape.png" alt="Logo" class="brand-logo-img">
+          <span class="brand-title-text">LOLCA Portal</span>
+        </div>
+
+        <div class="sidebar-user-card">
+          <img src="assets/icons/circle-user-round.png" alt="User" class="user-avatar">
+          <div>
+            <div id="sidebarUserName" class="user-info-name">Staff Admin</div>
+            <div id="sidebarUserRole" class="user-info-role">Super Admin</div>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav-menu">
+          <button type="button" class="sidebar-nav-item active" data-tab="dashboard">
+            <img src="assets/icons/landmark.png" class="sys-icon" alt="Dashboard">
+            Dashboard
+          </button>
+          <button type="button" class="sidebar-nav-item" data-tab="students">
+            <img src="assets/icons/users.png" class="sys-icon" alt="Students">
+            Student Registry
+          </button>
+          <button type="button" class="sidebar-nav-item" data-tab="grades">
+            <img src="assets/icons/file-text.png" class="sys-icon" alt="Grades">
+            Grade Marksheets
+          </button>
+          <button type="button" class="sidebar-nav-item" data-tab="payments">
+            <img src="assets/icons/landmark.png" class="sys-icon" alt="Fees">
+            Fees & Payments
+          </button>
+          <button type="button" class="sidebar-nav-item" data-tab="reports">
+            <img src="assets/icons/file-text.png" class="sys-icon" alt="Reports">
+            Report Cards & Receipts
+          </button>
+          <button type="button" class="sidebar-nav-item" data-tab="admins" data-admin-only="true">
+            <img src="assets/icons/user-key.png" class="sys-icon" alt="Teachers">
+            Teachers & Admins
+          </button>
+          <button type="button" class="sidebar-nav-item" data-tab="audit" data-admin-only="true">
+            <img src="assets/icons/info.png" class="sys-icon" alt="Audit">
+            Audit Logs
+          </button>
+          <button type="button" class="sidebar-nav-item" data-tab="settings" data-admin-only="true">
+            <img src="assets/icons/monitor-cog.png" class="sys-icon" alt="Settings">
+            School Settings
+          </button>
+        </nav>
+      </aside>
+
+      <!-- MAIN AREA -->
+      <div class="admin-main-area">
+        <!-- TOP NAVBAR -->
+        <header class="admin-top-navbar no-print">
+          <div class="top-nav-left">
+            <span class="top-nav-title">Primary Portal Dashboard</span>
+          </div>
+          <div class="top-nav-right">
+            <button type="button" id="btnGoDashboard" class="btn btn-primary btn-sm">
+              <img src="assets/icons/landmark.png" class="sys-icon" alt="Dashboard">
+              Go To Dashboard
+            </button>
+            <button type="button" class="btn btn-danger btn-sm btn-logout">
+              <img src="assets/icons/log-out.png" class="sys-icon" alt="Logout">
+              Logout
+            </button>
+          </div>
+        </header>
+
+        <!-- PAGE CONTENT CONTAINER -->
+        <main class="admin-page-content">
+
+          <!-- ==========================================
+               TAB: DASHBOARD (CARD TABS GRID AS IN IMAGE 5)
+               ========================================== -->
+          <section id="tabDashboard">
+            <div class="dashboard-heading-box no-print">
+              <h2>Primary Portal Dashboard</h2>
+              <span class="text-muted" style="font-size:13px;">Academic Year 2025-2026</span>
+            </div>
+
+            <!-- Image 5 Style Cards Grid -->
+            <div class="card-tabs-grid no-print">
+              <div class="action-card-tile" data-target-tab="students">
+                <div class="card-icon-square">
+                  <img src="assets/icons/users.png" alt="Students">
+                </div>
+                <div class="card-tile-info">
+                  <span class="card-tile-title">STUDENT REGISTRY</span>
+                  <span class="card-tile-desc">Enroll and manage students</span>
+                </div>
+              </div>
+
+              <div class="action-card-tile" data-target-tab="grades">
+                <div class="card-icon-square">
+                  <img src="assets/icons/file-text.png" alt="Grades">
+                </div>
+                <div class="card-tile-info">
+                  <span class="card-tile-title">GRADE ENTRY</span>
+                  <span class="card-tile-desc">Add and edit student marks</span>
+                </div>
+              </div>
+
+              <div class="action-card-tile" data-target-tab="payments">
+                <div class="card-icon-square">
+                  <img src="assets/icons/landmark.png" alt="Fees">
+                </div>
+                <div class="card-tile-info">
+                  <span class="card-tile-title">FEES & PAYMENTS</span>
+                  <span class="card-tile-desc">Track tuition and balance</span>
+                </div>
+              </div>
+
+              <div class="action-card-tile" data-target-tab="reports">
+                <div class="card-icon-square">
+                  <img src="assets/icons/file-text.png" alt="Reports">
+                </div>
+                <div class="card-tile-info">
+                  <span class="card-tile-title">REPORT CARDS</span>
+                  <span class="card-tile-desc">Print 2-page report cards</span>
+                </div>
+              </div>
+
+              <div class="action-card-tile" data-target-tab="admins" data-admin-only="true">
+                <div class="card-icon-square">
+                  <img src="assets/icons/user-key.png" alt="Staff">
+                </div>
+                <div class="card-tile-info">
+                  <span class="card-tile-title">TEACHER ASSIGNMENTS</span>
+                  <span class="card-tile-desc">Assign classes & subjects</span>
+                </div>
+              </div>
+
+              <div class="action-card-tile" data-target-tab="settings" data-admin-only="true">
+                <div class="card-icon-square">
+                  <img src="assets/icons/monitor-cog.png" alt="Settings">
+                </div>
+                <div class="card-tile-info">
+                  <span class="card-tile-title">SETTINGS</span>
+                  <span class="card-tile-desc">School configurations</span>
+                </div>
+              </div>
+
+              <div class="action-card-tile" data-target-tab="audit" data-admin-only="true">
+                <div class="card-icon-square">
+                  <img src="assets/icons/info.png" alt="Audit">
+                </div>
+                <div class="card-tile-info">
+                  <span class="card-tile-title">AUDIT LOGS</span>
+                  <span class="card-tile-desc">Security & system records</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Activity Log -->
+            <div class="content-box-card no-print">
+              <div class="content-box-header">
+                <span class="content-box-title">
+                  <img src="assets/icons/info.png" class="sys-icon" alt="Info">
+                  Recent School System Activity
+                </span>
+              </div>
+              <div class="content-box-body">
+                <div id="dashboardActivityList">
+                  <div class="text-muted">Loading activity stream...</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ==========================================
+               TAB: STUDENTS REGISTRY
+               ========================================== -->
+          <section id="tabStudents" class="hidden">
+            <div class="content-box-card">
+              <div class="content-box-header">
+                <div style="display:flex; align-items:center; gap:12px;">
+                  <span class="content-box-title">
+                    <img src="assets/icons/users.png" class="sys-icon" alt="Students">
+                    Student Directory & Registry
+                  </span>
+                  <span id="studentCountBadge" style="font-size:11.5px; font-weight:700; background:#e0f2fe; color:#0284c7; padding:2px 8px; border-radius:9999px;">
+                    0 enrolled
+                  </span>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm" onclick="LOLCA_APP.openAddStudentModal()">
+                  <img src="assets/icons/square-dashed-plus.png" class="sys-icon" alt="Add">
+                  Enroll New Student
+                </button>
+              </div>
+
+              <div class="content-box-body">
+                <div class="toolbar-row">
+                  <input type="text" id="studentSearch" class="input-field" placeholder="Search student by name, ID, or guardian..." style="max-width:320px;">
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <label for="studentClassFilter" style="font-size:12.5px; font-weight:600;">Grade Level:</label>
+                    <select id="studentClassFilter" class="select-field" style="width:160px;"></select>
+                  </div>
+                </div>
+
+                <div class="table-responsive">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Student Name</th>
+                        <th>Student ID</th>
+                        <th>Class</th>
+                        <th>Guardian</th>
+                        <th>Phone</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="studentsTableBody">
+                      <tr><td colspan="7" class="text-center text-muted" style="padding:24px;">Loading student records...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ==========================================
+               TAB: GRADE ENTRY & MARKSHEET
+               ========================================== -->
+          <section id="tabGrades" class="hidden">
+            <div class="content-box-card">
+              <div class="content-box-header">
+                <span class="content-box-title">
+                  <img src="assets/icons/file-text.png" class="sys-icon" alt="Grades">
+                  Grade Entry & Assessment Marksheet
+                </span>
+                <span class="text-muted" style="font-size:12px;">
+                  Teacher / Admin Authorization Active
+                </span>
+              </div>
+
+              <div class="content-box-body">
+                <div class="toolbar-row" style="background:#f8fafc; padding:12px 16px; border-radius:6px; border:1px solid #e2e8f0;">
+                  <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                    <div>
+                      <label class="form-label" style="font-size:11px;">Class Level</label>
+                      <select id="gradesSelectClass" class="select-field" style="width:140px;"></select>
+                    </div>
+                    <div>
+                      <label class="form-label" style="font-size:11px;">Subject</label>
+                      <select id="gradesSelectSubject" class="select-field" style="width:200px;"></select>
+                    </div>
+                    <button type="button" id="btnLoadMarksheet" class="btn btn-secondary" style="margin-top:18px;">
+                      Load Marksheet
+                    </button>
+                  </div>
+                </div>
+
+                <div class="table-responsive">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Student</th>
+                        <th style="width:65px;">1st</th>
+                        <th style="width:65px;">2nd</th>
+                        <th style="width:65px;">3rd</th>
+                        <th style="width:65px;">Ex 1</th>
+                        <th style="width:65px;">4th</th>
+                        <th style="width:65px;">5th</th>
+                        <th style="width:65px;">6th</th>
+                        <th style="width:65px;">Ex 2</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="marksheetTableBody">
+                      <tr><td colspan="10" class="text-center text-muted" style="padding:24px;">Click Load Marksheet to display students.</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ==========================================
+               TAB: FEES & PAYMENTS TRACKING (IMAGE 6 EXACT)
+               ========================================== -->
+          <section id="tabPayments" class="hidden">
+            <div class="toolbar-row no-print" style="margin-bottom:16px;">
+              <div style="display:flex; align-items:center; gap:12px; flex:1;">
+                <label for="paymentStudentSelect" style="font-size:13.5px; font-weight:700;">Select Student:</label>
+                <select id="paymentStudentSelect" class="select-field" style="max-width:380px;"></select>
+              </div>
+            </div>
+
+            <!-- Exact Receipt Target -->
+            <div id="paymentSheetContainer"></div>
+          </section>
+
+          <!-- ==========================================
+               TAB: 2-PAGE REPORT CARDS (IMAGES 1, 2, 3, 4)
+               ========================================== -->
+          <section id="tabReports" class="hidden">
+            <div class="toolbar-row no-print" style="margin-bottom:16px;">
+              <div style="display:flex; align-items:center; gap:12px; flex:1;">
+                <label for="reportStudentSelect" style="font-size:13.5px; font-weight:700;">Select Student:</label>
+                <select id="reportStudentSelect" class="select-field" style="max-width:380px;"></select>
+              </div>
+            </div>
+
+            <!-- 2-Page Half A4 Booklet Target -->
+            <div id="reportCardBookletContainer"></div>
+          </section>
+
+          <!-- ==========================================
+               TAB: TEACHERS & ADMINS MANAGEMENT
+               ========================================== -->
+          <section id="tabAdmins" class="hidden">
+            <div class="content-box-card">
+              <div class="content-box-header">
+                <span class="content-box-title">
+                  <img src="assets/icons/user-key.png" class="sys-icon" alt="Staff">
+                  Teachers & Staff Administrators Management
+                </span>
+                <button type="button" class="btn btn-primary btn-sm" onclick="LOLCA_APP.openAddAdminModal()">
+                  <img src="assets/icons/square-dashed-plus.png" class="sys-icon" alt="Add">
+                  Add Administrator / Teacher
+                </button>
+              </div>
+
+              <div class="content-box-body">
+                <div class="table-responsive">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Staff Name & Email</th>
+                        <th>Role</th>
+                        <th>Assigned Classes</th>
+                        <th>Assigned Subjects</th>
+                        <th>2FA Security</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="adminsTableBody">
+                      <tr><td colspan="7" class="text-center text-muted" style="padding:24px;">Loading staff accounts...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ==========================================
+               TAB: SECURITY AUDIT LOGS
+               ========================================== -->
+          <section id="tabAudit" class="hidden">
+            <div class="content-box-card">
+              <div class="content-box-header">
+                <span class="content-box-title">
+                  <img src="assets/icons/info.png" class="sys-icon" alt="Audit">
+                  System Security Audit Logs
+                </span>
+              </div>
+              <div class="content-box-body">
+                <div class="table-responsive">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Timestamp</th>
+                        <th>Actor</th>
+                        <th>Action</th>
+                        <th>Target</th>
+                        <th>Outcome</th>
+                        <th>Details</th>
+                      </tr>
+                    </thead>
+                    <tbody id="auditTableBody">
+                      <tr><td colspan="6" class="text-center text-muted" style="padding:24px;">Loading audit logs...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ==========================================
+               TAB: SYSTEM SETTINGS (NO BACKEND URL IN UI)
+               ========================================== -->
+          <section id="tabSettings" class="hidden">
+            <div class="content-box-card">
+              <div class="content-box-header">
+                <span class="content-box-title">
+                  <img src="assets/icons/monitor-cog.png" class="sys-icon" alt="Settings">
+                  School Profile & Configurations
+                </span>
+              </div>
+              <div class="content-box-body">
+                <div class="form-grid-2">
+                  <div class="form-group">
+                    <label class="form-label">Official Registered Name</label>
+                    <input type="text" id="setSchoolName" class="input-field" readonly>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Campus Location</label>
+                    <input type="text" id="setCampusLocation" class="input-field" readonly>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Contact Phones</label>
+                    <input type="text" id="setContactPhones" class="input-field" readonly>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Contact Email</label>
+                    <input type="text" id="setContactEmail" class="input-field" readonly>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Active Academic Year</label>
+                    <input type="text" id="setAcademicYear" class="input-field" readonly>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <!-- =======================================================================
+       MODALS
+       ======================================================================= -->
+
+  <!-- Modal: Record Payment -->
+  <div id="modalRecordPayment" class="modal-overlay hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>Record Student Payment</h3>
+        <button type="button" class="modal-close-btn" data-close-modal="modalRecordPayment">&times;</button>
+      </div>
+      <form id="formRecordPayment">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Student ID</label>
+            <input type="text" id="recordPayStudentId" class="input-field" readonly>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Class Level & Total Fee</label>
+              <input type="text" id="recordPayClass" class="input-field" readonly>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Current Balance Remaining</label>
+              <input type="text" id="recordPayBalance" class="input-field" readonly style="font-weight:700; color:#b91c1c;">
+            </div>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Payment Category *</label>
+              <select id="recordPayType" class="select-field" required>
+                <option value="Tuition">Tuition Fees</option>
+                <option value="Other Fees">Other Fees (Registration/ID/Activity)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Amount Paid ($ USD) *</label>
+              <input type="number" id="recordPayAmount" class="input-field" min="1" step="any" required placeholder="e.g. 50">
+            </div>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Payment Description</label>
+              <input type="text" id="recordPayDesc" class="input-field" placeholder="e.g. 1st Semester 2nd Installment">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Receipt Number (Optional)</label>
+              <input type="text" id="recordPayReceiptNum" class="input-field" placeholder="Leave empty for auto-generated">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Comments / Bank / MoMo Ref</label>
+            <input type="text" id="recordPayComments" class="input-field" placeholder="e.g. Paid in Cash / MTN MoMo ref">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal="modalRecordPayment">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Payment & Deduct Balance</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Add / Edit Student -->
+  <div id="modalAddStudent" class="modal-overlay hidden">
+    <div class="modal-dialog modal-dialog-lg">
+      <div class="modal-header">
+        <h3 id="modalAddStudentTitle">Enroll New Student</h3>
+        <button type="button" class="modal-close-btn" data-close-modal="modalAddStudent">&times;</button>
+      </div>
+      <form id="formAddStudent">
+        <input type="hidden" id="editStudentOriginalId" value="">
+        <div class="modal-body">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Student ID (Leave blank to auto-generate)</label>
+              <input type="text" id="inpStudentId" class="input-field" placeholder="e.g. LOLCA-2025-004">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Full Student Name *</label>
+              <input type="text" id="inpStudentName" class="input-field" required placeholder="Full Name">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Class Level (Nursery - Grade 6) *</label>
+              <select id="inpStudentClass" class="select-field" required></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Gender</label>
+              <select id="inpStudentGender" class="select-field">
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Date of Birth</label>
+              <input type="date" id="inpStudentDob" class="input-field">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Parent / Guardian Name</label>
+              <input type="text" id="inpGuardianName" class="input-field" placeholder="Guardian Name">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Contact Phone</label>
+              <input type="text" id="inpGuardianPhone" class="input-field" placeholder="+231-...">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Guardian Email</label>
+              <input type="email" id="inpGuardianEmail" class="input-field" placeholder="Email">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Residential Address</label>
+            <input type="text" id="inpStudentAddress" class="input-field" placeholder="Address">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select id="inpStudentStatus" class="select-field">
+              <option value="Active">Active</option>
+              <option value="Suspended">Suspended</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal="modalAddStudent">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Student</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Add / Edit Admin or Teacher -->
+  <div id="modalAddAdmin" class="modal-overlay hidden">
+    <div class="modal-dialog modal-dialog-lg">
+      <div class="modal-header">
+        <h3 id="modalAddAdminTitle">Add Administrator or Teacher</h3>
+        <button type="button" class="modal-close-btn" data-close-modal="modalAddAdmin">&times;</button>
+      </div>
+      <form id="formAddAdmin">
+        <input type="hidden" id="editAdminOriginalId" value="">
+        <div class="modal-body">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Staff Email *</label>
+              <input type="email" id="inpAdminEmail" class="input-field" required placeholder="e.g. teacher@lolca.edu.lr">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Full Legal Name *</label>
+              <input type="text" id="inpAdminFullName" class="input-field" required placeholder="e.g. Mrs. Rebecca Flomo">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Role *</label>
+              <select id="inpAdminRole" class="select-field" required>
+                <option value="Teacher">Teacher (Restricted to assigned classes & subjects)</option>
+                <option value="Staff Admin">Staff Administrator</option>
+                <option value="Dean of Academics">Dean of Academics</option>
+                <option value="Principal">Principal</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Contact Phone</label>
+              <input type="text" id="inpAdminPhone" class="input-field" placeholder="+231-...">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Password *</label>
+              <input type="password" id="inpAdminPassword" class="input-field" placeholder="Initial password">
+            </div>
+            <div class="form-group" style="display:flex; align-items:center; margin-top:24px;">
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="checkbox" id="inpAdmin2FA">
+                <span>Enforce 2FA OTP for this user</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Teacher Assignments -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:14px; margin-top:14px;">
+            <div style="font-weight:700; font-size:13px; margin-bottom:8px; color:#0284c7;">
+              Teacher Assignments & Permissions:
+            </div>
+            <div class="form-group">
+              <label class="form-label">Assign Classes (Teacher can only enter marks for checked classes):</label>
+              <div id="teacherClassesCheckboxes"></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Assign Subjects (Comma-separated, or 'all'):</label>
+              <input type="text" id="inpTeacherSubjects" class="input-field" placeholder="e.g. Grammar, Reading Comprehension, Arithmetic">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal="modalAddAdmin">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Staff User</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: 2FA Verification -->
+  <div id="modal2FA" class="modal-overlay hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>Two-Factor Security Verification</h3>
+        <button type="button" class="modal-close-btn" data-close-modal="modal2FA">&times;</button>
+      </div>
+      <form id="formVerify2FA">
+        <div class="modal-body text-center">
+          <h4 style="font-size:17px; margin-bottom:6px;">Enter 6-Digit OTP</h4>
+          <p id="note2FAInfo" class="text-muted" style="font-size:12.5px;"></p>
+          <div id="display2FAEmail" style="font-weight:700; color:#0284c7; margin-top:4px;"></div>
+          <div class="otp-input-container">
+            <input type="text" maxlength="1" id="otp1" class="otp-digit" required autocomplete="off">
+            <input type="text" maxlength="1" id="otp2" class="otp-digit" required autocomplete="off">
+            <input type="text" maxlength="1" id="otp3" class="otp-digit" required autocomplete="off">
+            <input type="text" maxlength="1" id="otp4" class="otp-digit" required autocomplete="off">
+            <input type="text" maxlength="1" id="otp5" class="otp-digit" required autocomplete="off">
+            <input type="text" maxlength="1" id="otp6" class="otp-digit" required autocomplete="off">
+          </div>
+          <div style="font-size:12px; color:#64748b;">
+            Didn't receive code?
+            <button type="button" id="btnResend2FA" class="btn btn-secondary btn-sm" disabled>
+              Resend Code <span id="resendCountdown">(60s)</span>
+            </button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal="modal2FA">Cancel</button>
+          <button type="submit" class="btn btn-primary">Verify & Enter Workstation</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Global Loader -->
+  <div id="globalLoader" class="global-loader-overlay hidden">
+    <div class="loader-content">
+      <div class="loader-spinner"></div>
+      <div class="loader-text">Communicating with LOLCA System...</div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>
