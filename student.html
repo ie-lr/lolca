@@ -29,7 +29,7 @@
             Student Grade & Payment Portal
           </h2>
           <p class="text-muted" style="font-size: 13.5px;">
-            Enter your Student ID to view terminal report cards and official payment receipts
+            Enter your Student ID and Password to view terminal report cards and official payment receipts
           </p>
         </div>
 
@@ -37,10 +37,23 @@
           <div class="form-group">
             <label class="form-label" for="studentIdInput">Student Identification Number</label>
             <input type="text" id="studentIdInput" class="input-field" 
-                   value="LOLCA-2025-001" required 
-                   placeholder="e.g. LOLCA-2025-001" style="font-family: monospace; font-size:16px; font-weight:700;">
-            <p class="text-muted" style="font-size: 12px; margin-top: 6px;">
-              Found on your registration badge or receipt (e.g. LOLCA-2025-001).
+                   value="" required 
+                   placeholder="e.g. LOLCA-2025-001" style="font-family: monospace; font-size:15px; font-weight:700;">
+            <p class="text-muted" style="font-size: 11.5px; margin-top: 4px;">
+              Found on your registration card or receipt (e.g. LOLCA-2025-001).
+            </p>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="studentPasswordInput">Student Account Password</label>
+            <div style="position:relative;">
+              <input type="password" id="studentPasswordInput" class="input-field" required placeholder="Enter student password">
+              <button type="button" id="btnToggleStudentPass" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:#64748b; font-size:12.5px; font-weight:600;">
+                Show
+              </button>
+            </div>
+            <p class="text-muted" style="font-size: 11.5px; margin-top: 4px;">
+              Password issued during registration (Default: <code>student123</code>).
             </p>
           </div>
 
@@ -72,7 +85,7 @@
        ======================================================================= -->
   <div id="viewStudentPortal" class="hidden">
     <!-- Header -->
-    <header class="admin-top-navbar no-print" style="position:static; height:68px;">
+    <header class="admin-top-navbar no-print" style="position:static; height:auto; min-height:68px; padding:10px 20px;">
       <div class="top-nav-left">
         <img src="assets/images/LOLCA logo circle shape.png" style="width:38px; height:38px;" alt="LOLCA">
         <div>
@@ -81,15 +94,35 @@
         </div>
       </div>
 
-      <div class="top-nav-right">
-        <div style="display:flex; align-items:center; gap:8px; background:#f1f5f9; padding:5px 12px; border-radius:9999px;">
-          <img src="assets/icons/circle-user-round.png" style="width:24px; height:24px;" alt="Student">
+      <div class="top-nav-right" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; gap:8px; background:#f1f5f9; padding:4px 12px; border-radius:9999px;">
+          <img src="assets/icons/circle-user-round.png" id="studentPortalAvatar" class="user-avatar-sm" alt="Student">
           <div style="font-size:12px;">
             <strong id="studentPortalName">Student Name</strong>
             <span id="studentPortalClass" style="color:#64748b; margin-left:4px;">Grade</span>
           </div>
         </div>
-        <button type="button" class="btn btn-secondary btn-sm btn-logout">
+
+        <!-- Download Web App -->
+        <button type="button" class="btn btn-secondary btn-sm" id="btnStudentInstallApp" title="Download & install web app">
+          <img src="assets/icons/download (2).png" class="sys-icon" alt="Download">
+          Download App
+        </button>
+
+        <!-- Share Account Link -->
+        <button type="button" class="btn btn-secondary btn-sm" id="btnStudentShareLink" title="Share direct student account link">
+          <img src="assets/icons/camera.png" class="sys-icon" alt="Share">
+          Share Link
+        </button>
+
+        <!-- Account Settings & Password -->
+        <button type="button" class="btn btn-secondary btn-sm" id="btnStudentSettings" title="Change password and photo">
+          <img src="assets/icons/user-key.png" class="sys-icon" alt="Settings">
+          Settings
+        </button>
+
+        <!-- Sign Out -->
+        <button type="button" class="btn btn-danger btn-sm btn-logout">
           <img src="assets/icons/log-out.png" class="sys-icon" alt="Logout">
           Sign Out
         </button>
@@ -98,18 +131,18 @@
 
     <div style="max-width:1100px; margin:24px auto; padding:0 20px;">
       <!-- Navigation Tabs -->
-      <div class="no-print" style="display:flex; gap:10px; margin-bottom:24px; border-bottom:1px solid #cbd5e1; padding-bottom:8px;">
+      <div class="no-print" style="display:flex; gap:10px; margin-bottom:24px; border-bottom:1px solid #cbd5e1; padding-bottom:8px; flex-wrap:wrap;">
         <button type="button" id="tabBtnReportCard" class="btn btn-primary" onclick="showStudentSection('report')">
           <img src="assets/icons/file-text.png" class="sys-icon" alt="Report">
-          Official 2-Page Report Card
+          Official Report Card
         </button>
         <button type="button" id="tabBtnReceipt" class="btn btn-secondary" onclick="showStudentSection('receipt')">
           <img src="assets/icons/landmark.png" class="sys-icon" alt="Receipt">
-          Payment Information & Receipts
+          Payment Information & Receipt (Half-A4)
         </button>
         <button type="button" class="btn btn-secondary" style="margin-left:auto;" onclick="window.print()">
           <img src="assets/icons/download (2).png" class="sys-icon" alt="Print">
-          Print / Download Document
+          Print / Save PDF
         </button>
       </div>
 
@@ -121,6 +154,98 @@
       <!-- Section: Payment Receipt -->
       <div id="studentSectionReceipt" class="hidden">
         <div id="studentOwnReceiptTarget"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =======================================================================
+       MODAL: STUDENT ACCOUNT SETTINGS & PASSWORD CHANGE
+       ======================================================================= -->
+  <div id="modalStudentSettings" class="modal-overlay hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>Student Account Settings</h3>
+        <button type="button" class="modal-close-btn" data-close-modal="modalStudentSettings">&times;</button>
+      </div>
+      <form id="formStudentSettings">
+        <div class="modal-body">
+          <div class="photo-upload-group">
+            <div class="photo-preview-box">
+              <img src="assets/icons/circle-user-round.png" id="studentSelfPhotoPreview" alt="Student Preview">
+            </div>
+            <div>
+              <label class="form-label" style="margin-bottom:4px; font-weight:700;">Update Passport Photo</label>
+              <input type="file" id="inpStudentSelfPhotoFile" accept="image/*" class="input-field" style="padding:6px; font-size:12px;">
+              <input type="hidden" id="inpStudentSelfPhotoUrl" value="">
+              <small class="text-muted">Passport photo used on your official report card and payment receipts.</small>
+            </div>
+          </div>
+
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:12px; margin-bottom:14px;">
+            <div style="font-size:12.5px; color:#475569;">
+              <strong id="displaySettingsStudentName">Student Name</strong><br>
+              <span id="displaySettingsStudentId" style="font-family:monospace; color:#0284c7; font-weight:700;"></span> •
+              <span id="displaySettingsStudentClass"></span>
+            </div>
+          </div>
+
+          <div style="border-top:1px solid #e2e8f0; padding-top:14px; margin-top:10px;">
+            <h4 style="font-size:14px; font-weight:800; color:#1e293b; margin-bottom:10px;">Change Password</h4>
+            <div class="form-group">
+              <label class="form-label">Current Password *</label>
+              <input type="password" id="inpStudentOldPass" class="input-field" required placeholder="Enter current password">
+            </div>
+            <div class="form-group">
+              <label class="form-label">New Password *</label>
+              <input type="password" id="inpStudentNewPass" class="input-field" required minlength="4" placeholder="Enter new password (min 4 characters)">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Confirm New Password *</label>
+              <input type="password" id="inpStudentConfirmPass" class="input-field" required minlength="4" placeholder="Re-enter new password">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal="modalStudentSettings">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes & Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =======================================================================
+       MODAL: STUDENT SHARE ACCOUNT LINK
+       ======================================================================= -->
+  <div id="modalStudentShare" class="modal-overlay hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>Share Student Account Link</h3>
+        <button type="button" class="modal-close-btn" data-close-modal="modalStudentShare">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:13px; color:#475569; margin-bottom:14px;">
+          Share your direct student access link with your parent or guardian via WhatsApp or SMS. It automatically enters your Student ID:
+        </p>
+        <div class="form-group">
+          <label class="form-label">Direct Student Portal Link</label>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="inpStudentShareUrl" class="input-field" readonly style="font-family:monospace; font-size:12px;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btnStudentCopyUrl">Copy</button>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:10px; margin-top:16px;">
+          <a id="btnStudentWhatsApp" target="_blank" class="btn btn-whatsapp" style="text-align:center; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:8px; padding:10px;">
+            <img src="assets/images/WhatsApp Image 2026-07-13 at 11.54.49 AM.jpeg" style="width:18px; height:18px; border-radius:50%;" alt="WA">
+            Share to WhatsApp
+          </a>
+          <a id="btnStudentSMS" class="btn btn-sms" style="text-align:center; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:8px; padding:10px;">
+            <img src="assets/icons/mail-open.png" class="sys-icon" alt="SMS">
+            Share via SMS (Mobile Text)
+          </a>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-close-modal="modalStudentShare">Close</button>
       </div>
     </div>
   </div>

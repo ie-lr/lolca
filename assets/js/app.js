@@ -1,90 +1,71 @@
 /**
  * app.js
  * -----------------------------------------------------------------------
- * Main Application Controller for Light of Life Christian Academy (LOLCA).
- * Handles authentication, 2FA, Admin/Teacher Workstation with left pane,
- * Card Tabs dashboard, dynamic grades per subject, fees & payment auto-balance,
- * and exact 2-page report cards and receipts generation.
+ * Light of Life Christian Academy (LOLCA) - Core Application Controller
+ * Handles Student Registry, Staff Management, Marksheets, Subjects, Class Fees,
+ * Half-A4 Payment Receipts, and Official 2-Page Report Cards.
  * -----------------------------------------------------------------------
  */
 
-document.addEventListener('DOMContentLoaded', () => {
-  LOLCA_APP.init();
-});
-
-const LOLCA_APP = (function() {
+const LOLCA_APP = (function () {
   const state = {
     currentUser: null,
-    userType: null, // 'admin' | 'teacher' | 'student'
+    userType: null, // 'admin', 'teacher', 'student'
     activeTab: 'dashboard',
+    pending2FA: { email: '', tempToken: '', rememberMe: false, countdown: 60, timer: null },
     studentsCache: [],
     adminsCache: [],
-    auditLogsCache: [],
-    selectedStudentForReport: null,
     selectedStudentForPayment: null,
-    pending2FA: { email: '', tempToken: '', countdown: 60, timer: null },
-    slideshowIndex: 0,
-    slideshowTimer: null
+    selectedStudentForReport: null,
+    deferredPrompt: null
   };
 
-  const SLIDESHOW_IMAGES = [
-    'assets/images/65fa9b9a-2d1a-4e1e-995e-66f1dfc8fc0e.jfif',
-    'assets/images/4238c817-2e37-4eea-9a6d-7181f86554f3.jfif',
-    'assets/images/8079ddd5-119b-4b66-ad29-b01647b3a402.jfif',
-    'assets/images/859d8505-eba4-4a8c-89a2-3dbb2a9b77c5.jfif',
-    'assets/images/a7ad9bcb-5da6-4515-9703-cdac8306fb0f.jfif',
-    'assets/images/WhatsApp Image 2026-07-10 at 10.52.31 AM.jpeg'
-  ];
-
   /* =======================================================================
-     INITIALIZATION & SESSION RESTORATION
+     APPLICATION INITIALIZATION
      ======================================================================= */
-  function init() {
-    initSlideshow();
+  async function init() {
+    setupPwaInstallListener();
     setupEventHandlers();
-    checkExistingSession();
-  }
+    setupImageUploadHandlers();
 
-  function initSlideshow() {
-    const container = document.getElementById('bgSlideshow');
-    if (!container) return;
-    container.innerHTML = '';
-    SLIDESHOW_IMAGES.forEach((src, idx) => {
-      const slide = document.createElement('div');
-      slide.className = 'slide' + (idx === 0 ? ' active' : '');
-      slide.style.backgroundImage = `url('${src}')`;
-      container.appendChild(slide);
-    });
+    const path = window.location.pathname.toLowerCase();
 
-    if (state.slideshowTimer) clearInterval(state.slideshowTimer);
-    state.slideshowTimer = setInterval(() => {
-      const slides = container.querySelectorAll('.slide');
-      if (!slides.length) return;
-      slides[state.slideshowIndex].classList.remove('active');
-      state.slideshowIndex = (state.slideshowIndex + 1) % slides.length;
-      slides[state.slideshowIndex].classList.add('active');
-    }, 5500);
-  }
-
-  function checkExistingSession() {
-    const user = API.getCurrentUser();
-    const token = API.getSessionToken();
-
-    if (user && token) {
-      state.currentUser = user;
-      if (user.role === 'Teacher') {
-        state.userType = 'teacher';
-        showAdminWorkstation();
-      } else if (user.role || user.permissions) {
-        state.userType = 'admin';
-        showAdminWorkstation();
-      } else if (user.studentId) {
-        state.userType = 'student';
-        showStudentPortal();
-      } else {
-        showGateway();
+    if (path.includes('student.html')) {
+      // Check query parameter for shared link: ?id=LOLCA-2025-001 or ?studentId=...
+      const urlParams = new URLSearchParams(window.location.search);
+      const sharedId = urlParams.get('id') || urlParams.get('studentId');
+      const studentIdInp = document.getElementById('studentIdInput');
+      if (sharedId && studentIdInp) {
+        studentIdInp.value = sharedId.trim().toUpperCase();
       }
+
+      const savedStudent = sessionStorage.getItem('lolca_user') || localStorage.getItem('lolca_user');
+      const savedToken = API.getSessionToken();
+
+      if (savedStudent && savedToken && savedToken.startsWith('token-student-')) {
+        try {
+          const st = JSON.parse(savedStudent);
+          state.currentUser = st;
+          state.userType = 'student';
+          showStudentPortal();
+          return;
+        } catch (e) {}
+      }
+      showGateway();
     } else {
+      // Admin / Staff Workstation
+      const savedUser = sessionStorage.getItem('lolca_user') || localStorage.getItem('lolca_user');
+      const savedToken = API.getSessionToken();
+
+      if (savedUser && savedToken && !savedToken.startsWith('token-student-')) {
+        try {
+          const u = JSON.parse(savedUser);
+          state.currentUser = u;
+          state.userType = u.role === 'Teacher' ? 'teacher' : 'admin';
+          showAdminWorkstation();
+          return;
+        } catch (e) {}
+      }
       showGateway();
     }
   }
@@ -128,8 +109,6 @@ const LOLCA_APP = (function() {
      ======================================================================= */
   function applyTeacherRoleRestrictions() {
     const isTeacher = state.currentUser && state.currentUser.role === 'Teacher';
-    const assignedClasses = (state.currentUser && state.currentUser.assignedClasses) || ['all'];
-    const assignedSubjects = (state.currentUser && state.currentUser.assignedSubjects) || ['all'];
 
     // Hide admin-only tabs for teachers
     document.querySelectorAll('[data-admin-only="true"]').forEach(el => {
@@ -152,7 +131,8 @@ const LOLCA_APP = (function() {
   }
 
   function getAccessibleSubjects(selectedClass) {
-    const isPreschool = (window.APP_CONFIG.preschoolClasses || []).includes(selectedClass);
+    const preschoolClasses = window.APP_CONFIG.preschoolClasses || ["Nursery", "KI", "KII"];
+    const isPreschool = preschoolClasses.map(c => c.toLowerCase()).includes((selectedClass || '').toLowerCase());
     const curriculum = isPreschool ? window.APP_CONFIG.preschoolCurriculum : window.APP_CONFIG.elementaryCurriculum;
     let allSubjects = [];
     Object.values(curriculum).forEach(list => { allSubjects = allSubjects.concat(list); });
@@ -164,31 +144,11 @@ const LOLCA_APP = (function() {
   }
 
   /* =======================================================================
-     GATEWAY & AUTHENTICATION
+     EVENT LISTENERS & SETUP
      ======================================================================= */
   function setupEventHandlers() {
-    // Gateway Tabs
-    const tabAdminBtn = document.getElementById('tabGatewayAdmin');
-    const tabStudentBtn = document.getElementById('tabGatewayStudent');
+    // Admin/Teacher Login Form
     const formAdmin = document.getElementById('formAdminLogin');
-    const formStudent = document.getElementById('formStudentLogin');
-
-    if (tabAdminBtn && tabStudentBtn) {
-      tabAdminBtn.addEventListener('click', () => {
-        tabAdminBtn.classList.add('active');
-        tabStudentBtn.classList.remove('active');
-        formAdmin.classList.remove('hidden');
-        formStudent.classList.add('hidden');
-      });
-      tabStudentBtn.addEventListener('click', () => {
-        tabStudentBtn.classList.add('active');
-        tabAdminBtn.classList.remove('active');
-        formStudent.classList.remove('hidden');
-        formAdmin.classList.add('hidden');
-      });
-    }
-
-    // Admin/Teacher login form
     if (formAdmin) {
       formAdmin.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -216,19 +176,23 @@ const LOLCA_APP = (function() {
       });
     }
 
-    // Student login form
+    // Student Login Form with Password Protection
+    const formStudent = document.getElementById('formStudentLogin');
     if (formStudent) {
       formStudent.addEventListener('submit', async (e) => {
         e.preventDefault();
         const studentId = document.getElementById('studentIdInput').value.trim();
-        const res = await API.request('studentLogin', { studentId });
+        const passwordInp = document.getElementById('studentPasswordInput');
+        const password = passwordInp ? passwordInp.value : '';
+
+        const res = await API.request('studentLogin', { studentId, password });
         if (!res.success) {
-          API.toastError(res.message || 'Student ID not recognized.');
+          API.toastError(res.message || 'Invalid Student ID or password.');
           return;
         }
 
-        API.setSessionToken(res.sessionToken, false);
-        API.setCurrentUser(res.student, false);
+        API.setSessionToken(res.sessionToken, true);
+        API.setCurrentUser(res.student, true);
         state.currentUser = res.student;
         state.userType = 'student';
         API.toastSuccess(`Welcome, ${res.student.fullName}!`);
@@ -236,10 +200,54 @@ const LOLCA_APP = (function() {
       });
     }
 
-    // 2FA OTP auto advance
-    setupOtpInputListeners();
+    // Student Password Visibility Toggle
+    const btnTogglePass = document.getElementById('btnToggleStudentPass');
+    if (btnTogglePass) {
+      btnTogglePass.addEventListener('click', () => {
+        const inp = document.getElementById('studentPasswordInput');
+        if (inp) {
+          const isPass = inp.type === 'password';
+          inp.type = isPass ? 'text' : 'password';
+          btnTogglePass.textContent = isPass ? 'Hide' : 'Show';
+        }
+      });
+    }
 
-    // 2FA Form submit
+    // Student Portal Action Buttons
+    const btnStudentSettings = document.getElementById('btnStudentSettings');
+    if (btnStudentSettings) {
+      btnStudentSettings.addEventListener('click', openStudentSettingsModal);
+    }
+
+    const btnStudentShare = document.getElementById('btnStudentShareLink');
+    if (btnStudentShare) {
+      btnStudentShare.addEventListener('click', openStudentShareModal);
+    }
+
+    const btnStudentInstall = document.getElementById('btnStudentInstallApp');
+    if (btnStudentInstall) {
+      btnStudentInstall.addEventListener('click', installWebApp);
+    }
+
+    const btnStudentCopyUrl = document.getElementById('btnStudentCopyUrl');
+    if (btnStudentCopyUrl) {
+      btnStudentCopyUrl.addEventListener('click', () => {
+        const urlInp = document.getElementById('inpStudentShareUrl');
+        if (urlInp) {
+          navigator.clipboard.writeText(urlInp.value).then(() => {
+            API.toastSuccess('Student account link copied to clipboard!');
+          });
+        }
+      });
+    }
+
+    const formStudentSettings = document.getElementById('formStudentSettings');
+    if (formStudentSettings) {
+      formStudentSettings.addEventListener('submit', handleStudentSettingsSubmit);
+    }
+
+    // 2FA OTP Listeners
+    setupOtpInputListeners();
     const form2FA = document.getElementById('formVerify2FA');
     if (form2FA) {
       form2FA.addEventListener('submit', async (e) => {
@@ -289,7 +297,7 @@ const LOLCA_APP = (function() {
       btn.addEventListener('click', handleLogout);
     });
 
-    // Sidebar navigation items
+    // Sidebar navigation
     document.querySelectorAll('.sidebar-nav-item').forEach(item => {
       item.addEventListener('click', () => {
         const tab = item.getAttribute('data-tab');
@@ -297,7 +305,7 @@ const LOLCA_APP = (function() {
       });
     });
 
-    // Card Tabs on Dashboard
+    // Dashboard card tiles
     document.querySelectorAll('.action-card-tile').forEach(tile => {
       tile.addEventListener('click', () => {
         const tab = tile.getAttribute('data-target-tab');
@@ -305,13 +313,13 @@ const LOLCA_APP = (function() {
       });
     });
 
-    // Top Nav "Go To Dashboard" button
+    // Go To Dashboard button
     const btnGoDashboard = document.getElementById('btnGoDashboard');
     if (btnGoDashboard) {
       btnGoDashboard.addEventListener('click', () => switchTab('dashboard'));
     }
 
-    // Students filter / search
+    // Student Registry Search & Filter
     const sSearch = document.getElementById('studentSearch');
     const sClassFilter = document.getElementById('studentClassFilter');
     if (sSearch) sSearch.addEventListener('input', debounce(loadStudentsTable, 250));
@@ -325,14 +333,25 @@ const LOLCA_APP = (function() {
     const formAddAdmin = document.getElementById('formAddAdmin');
     if (formAddAdmin) formAddAdmin.addEventListener('submit', handleAddAdminSubmit);
 
-    // Grades Selectors
+    // Grade Entry Marksheet Class & Subject Selectors
     const gradesClass = document.getElementById('gradesSelectClass');
     const gradesSubject = document.getElementById('gradesSelectSubject');
     if (gradesClass) {
-      gradesClass.addEventListener('change', updateGradesSubjectOptions);
+      gradesClass.addEventListener('change', () => {
+        updateGradesSubjectOptions();
+        loadClassMarksheet();
+      });
+    }
+    if (gradesSubject) {
+      gradesSubject.addEventListener('change', () => {
+        loadClassMarksheet();
+      });
     }
     const btnLoadMarksheet = document.getElementById('btnLoadMarksheet');
     if (btnLoadMarksheet) btnLoadMarksheet.addEventListener('click', loadClassMarksheet);
+
+    const btnSaveAllMarksheet = document.getElementById('btnSaveAllMarksheet');
+    if (btnSaveAllMarksheet) btnSaveAllMarksheet.addEventListener('click', saveAllClassMarksheet);
 
     // Payment student select
     const payStudentSelect = document.getElementById('paymentStudentSelect');
@@ -352,13 +371,246 @@ const LOLCA_APP = (function() {
       });
     }
 
-    // Modal Close
+    // Subject Management Form
+    const formAddSubject = document.getElementById('formAddSubject');
+    if (formAddSubject) formAddSubject.addEventListener('submit', handleSaveSubjectSubmit);
+
+    // Class Fee & Requirements Form
+    const formEditClassFee = document.getElementById('formEditClassFee');
+    if (formEditClassFee) formEditClassFee.addEventListener('submit', handleSaveClassFeeSubmit);
+
+    // Tuition & Other fee live total calculation in modal
+    const inpFeeTuition = document.getElementById('inpFeeTuition');
+    const inpFeeOther = document.getElementById('inpFeeOther');
+    const inpFeeTotal = document.getElementById('inpFeeTotal');
+    function updateModalFeeTotal() {
+      if (inpFeeTuition && inpFeeOther && inpFeeTotal) {
+        const t = Number(inpFeeTuition.value) || 0;
+        const o = Number(inpFeeOther.value) || 0;
+        inpFeeTotal.value = t + o;
+      }
+    }
+    if (inpFeeTuition) inpFeeTuition.addEventListener('input', updateModalFeeTotal);
+    if (inpFeeOther) inpFeeOther.addEventListener('input', updateModalFeeTotal);
+
+    // Admin PWA Download & Share buttons
+    const btnInstallAppAdmin = document.getElementById('btnInstallAppAdmin');
+    if (btnInstallAppAdmin) btnInstallAppAdmin.addEventListener('click', installWebApp);
+
+    // Modal Close buttons
     document.querySelectorAll('[data-close-modal]').forEach(btn => {
       btn.addEventListener('click', () => {
         const modalId = btn.getAttribute('data-close-modal');
         if (modalId) closeModal(modalId);
       });
     });
+  }
+
+  /* =======================================================================
+     IMAGE & PHOTO UPLOAD HELPER (BASE64 CONVERSION)
+     ======================================================================= */
+  function setupImageUploadHandlers() {
+    // 1. Student Passport Photo in Add/Edit Student modal
+    bindPhotoUpload('inpStudentPhotoFile', 'imgStudentPhotoPreview', 'inpStudentPhotoUrl');
+
+    // 2. Admin Photo in Add/Edit Admin modal
+    bindPhotoUpload('inpAdminPhotoFile', 'imgAdminPhotoPreview', 'inpAdminPhotoUrl');
+
+    // 3. Student Self Photo in Student Settings modal
+    bindPhotoUpload('inpStudentSelfPhotoFile', 'studentSelfPhotoPreview', 'inpStudentSelfPhotoUrl');
+
+    // 4. Admin Self Photo in Settings tab
+    const adminSelfInp = document.getElementById('inpAdminSelfPhotoFile');
+    if (adminSelfInp) {
+      adminSelfInp.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async function (evt) {
+          const dataUrl = evt.target.result;
+          const prev = document.getElementById('adminSelfPhotoPreview');
+          const sidebarAvatar = document.getElementById('sidebarUserAvatar');
+          if (prev) prev.src = dataUrl;
+          if (sidebarAvatar) sidebarAvatar.src = dataUrl;
+
+          if (state.currentUser) {
+            state.currentUser.photoUrl = dataUrl;
+            API.setCurrentUser(state.currentUser, true);
+            await API.request('updateAdmin', { adminId: state.currentUser.adminId, photoUrl: dataUrl });
+            API.toastSuccess('Profile photo updated successfully!');
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  }
+
+  function bindPhotoUpload(fileInputId, imgPreviewId, hiddenInputId) {
+    const fileInp = document.getElementById(fileInputId);
+    const imgPrev = document.getElementById(imgPreviewId);
+    const hiddenInp = document.getElementById(hiddenInputId);
+    if (!fileInp || !imgPrev) return;
+
+    fileInp.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) {
+        API.toastError('Image file must be under 5MB.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = function (evt) {
+        const dataUrl = evt.target.result;
+        imgPrev.src = dataUrl;
+        if (hiddenInp) hiddenInp.value = dataUrl;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  /* =======================================================================
+     PWA WEB APP DOWNLOAD / INSTALL
+     ======================================================================= */
+  function setupPwaInstallListener() {
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      state.deferredPrompt = e;
+    });
+  }
+
+  function installWebApp() {
+    if (state.deferredPrompt) {
+      state.deferredPrompt.prompt();
+      state.deferredPrompt.userChoice.then((choice) => {
+        if (choice.outcome === 'accepted') {
+          API.toastSuccess('LOLCA App successfully installed!');
+        }
+        state.deferredPrompt = null;
+      });
+    } else {
+      alert(
+        "To install or download the LOLCA Web App:\n\n" +
+        "• Google Chrome / Edge: Click the 'Install' icon (computer monitor with arrow) in the right side of the URL address bar.\n" +
+        "• iPhone / Safari: Tap the 'Share' button at bottom, then choose 'Add to Home Screen'.\n" +
+        "• Android / Chrome: Tap the top-right menu (3 dots) and select 'Install app' or 'Add to Home screen'."
+      );
+    }
+  }
+
+  /* =======================================================================
+     ACCOUNT LINK SHARING (WHATSAPP, SMS, CLIPBOARD)
+     ======================================================================= */
+  function shareLink(portalType, method) {
+    const baseUrl = window.location.origin + window.location.pathname;
+    let targetUrl = baseUrl;
+
+    if (portalType === 'student') {
+      const studentId = state.selectedStudentForReport || (state.currentUser && state.currentUser.studentId) || 'LOLCA-2025-001';
+      targetUrl = baseUrl.replace('admin.html', 'student.html') + `?id=${encodeURIComponent(studentId)}`;
+    } else {
+      targetUrl = baseUrl.replace('student.html', 'admin.html');
+    }
+
+    const shareTitle = portalType === 'student' ? 'LOLCA Student & Parent Portal' : 'LOLCA Staff & Teacher Workstation';
+    const shareText = `Access ${shareTitle}: ${targetUrl}`;
+
+    if (method === 'whatsapp') {
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, '_blank');
+    } else if (method === 'sms') {
+      window.location.href = `sms:?body=${encodeURIComponent(shareText)}`;
+    } else {
+      navigator.clipboard.writeText(targetUrl).then(() => {
+        API.toastSuccess('Portal link copied to clipboard!');
+      }).catch(() => {
+        prompt('Copy portal link:', targetUrl);
+      });
+    }
+  }
+
+  function openStudentShareModal() {
+    const st = state.currentUser;
+    if (!st) return;
+    const baseUrl = window.location.origin + window.location.pathname;
+    const directUrl = `${baseUrl}?id=${encodeURIComponent(st.studentId)}`;
+
+    const urlInp = document.getElementById('inpStudentShareUrl');
+    if (urlInp) urlInp.value = directUrl;
+
+    const waBtn = document.getElementById('btnStudentWhatsApp');
+    if (waBtn) {
+      waBtn.href = `https://api.whatsapp.com/send?text=${encodeURIComponent(`Access my Light of Life Christian Academy Student Portal: ${directUrl}`)}`;
+    }
+
+    const smsBtn = document.getElementById('btnStudentSMS');
+    if (smsBtn) {
+      smsBtn.href = `sms:?body=${encodeURIComponent(`Access my Light of Life Christian Academy Student Portal: ${directUrl}`)}`;
+    }
+
+    openModal('modalStudentShare');
+  }
+
+  function openStudentSettingsModal() {
+    const st = state.currentUser;
+    if (!st) return;
+
+    const nameEl = document.getElementById('displaySettingsStudentName');
+    const idEl = document.getElementById('displaySettingsStudentId');
+    const classEl = document.getElementById('displaySettingsStudentClass');
+    const photoPrev = document.getElementById('studentSelfPhotoPreview');
+    const photoHidden = document.getElementById('inpStudentSelfPhotoUrl');
+
+    if (nameEl) nameEl.textContent = st.fullName;
+    if (idEl) idEl.textContent = st.studentId;
+    if (classEl) classEl.textContent = st.class;
+    if (photoPrev) photoPrev.src = st.photoUrl || 'assets/icons/circle-user-round.png';
+    if (photoHidden) photoHidden.value = st.photoUrl || '';
+
+    const oldP = document.getElementById('inpStudentOldPass');
+    const newP = document.getElementById('inpStudentNewPass');
+    const confP = document.getElementById('inpStudentConfirmPass');
+    if (oldP) oldP.value = '';
+    if (newP) newP.value = '';
+    if (confP) confP.value = '';
+
+    openModal('modalStudentSettings');
+  }
+
+  async function handleStudentSettingsSubmit(e) {
+    e.preventDefault();
+    const st = state.currentUser;
+    if (!st) return;
+
+    const oldPassword = document.getElementById('inpStudentOldPass').value;
+    const newPassword = document.getElementById('inpStudentNewPass').value;
+    const confirmPassword = document.getElementById('inpStudentConfirmPass').value;
+    const photoUrl = document.getElementById('inpStudentSelfPhotoUrl').value;
+
+    if (newPassword !== confirmPassword) {
+      API.toastError('New passwords do not match. Please re-enter.');
+      return;
+    }
+
+    const res = await API.request('changeStudentPassword', {
+      studentId: st.studentId,
+      oldPassword: oldPassword,
+      newPassword: newPassword,
+      photoUrl: photoUrl
+    });
+
+    if (!res.success) {
+      API.toastError(res.message || 'Could not update password.');
+      return;
+    }
+
+    state.currentUser = res.student;
+    API.setCurrentUser(res.student, true);
+    updateStudentHeader();
+    closeModal('modalStudentSettings');
+    API.toastSuccess('Password and profile photo updated successfully!');
+
+    // Re-render report card and receipt
+    generateStudentOwnReportCard(res.student.studentId);
+    loadStudentOwnPaymentSheet(res.student.studentId);
   }
 
   function handleLogout() {
@@ -382,7 +634,7 @@ const LOLCA_APP = (function() {
     });
 
     // Hide all tab panes
-    ['tabDashboard', 'tabStudents', 'tabGrades', 'tabPayments', 'tabReports', 'tabAdmins', 'tabAudit', 'tabSettings'].forEach(id => {
+    ['tabDashboard', 'tabStudents', 'tabGrades', 'tabSubjects', 'tabFeesSchedule', 'tabPayments', 'tabReports', 'tabAdmins', 'tabAudit', 'tabSettings'].forEach(id => {
       const pane = document.getElementById(id);
       if (pane) pane.classList.add('hidden');
     });
@@ -391,6 +643,8 @@ const LOLCA_APP = (function() {
       dashboard: 'tabDashboard',
       students: 'tabStudents',
       grades: 'tabGrades',
+      subjects: 'tabSubjects',
+      feesSchedule: 'tabFeesSchedule',
       payments: 'tabPayments',
       reports: 'tabReports',
       admins: 'tabAdmins',
@@ -414,6 +668,12 @@ const LOLCA_APP = (function() {
       case 'grades':
         initGradesSelectors();
         break;
+      case 'subjects':
+        loadSubjectsView();
+        break;
+      case 'feesSchedule':
+        loadFeesScheduleView();
+        break;
       case 'payments':
         initPaymentsSection();
         break;
@@ -436,106 +696,94 @@ const LOLCA_APP = (function() {
     const user = state.currentUser || {};
     const nameEl = document.getElementById('sidebarUserName');
     const roleEl = document.getElementById('sidebarUserRole');
+    const avatarEl = document.getElementById('sidebarUserAvatar');
+    const selfPhotoEl = document.getElementById('adminSelfPhotoPreview');
+
     if (nameEl) nameEl.textContent = user.fullName || user.email || 'Admin User';
     if (roleEl) roleEl.textContent = user.role || 'Staff Admin';
+    if (avatarEl && user.photoUrl) avatarEl.src = user.photoUrl;
+    if (selfPhotoEl && user.photoUrl) selfPhotoEl.src = user.photoUrl;
   }
 
   /* =======================================================================
      DASHBOARD TAB
      ======================================================================= */
   async function loadDashboardStats() {
-    const resS = await API.request('getStudents', { search: '', class: 'All' }, 'GET');
-    const totalStudents = resS.success ? resS.total : 0;
-
-    const resA = await API.request('getAdmins', {}, 'GET');
-    const totalAdmins = resA.success ? (resA.admins ? resA.admins.length : 0) : 0;
-
-    const statS = document.getElementById('statTotalStudents');
-    if (statS) statS.textContent = totalStudents;
-
-    const statA = document.getElementById('statTotalAdmins');
-    if (statA) statA.textContent = totalAdmins;
-
-    loadRecentActivityFeed();
-  }
-
-  async function loadRecentActivityFeed() {
+    const resA = await API.request('getAuditLogs', {}, 'GET');
+    const logs = resA.logs || [];
     const listEl = document.getElementById('dashboardActivityList');
-    if (!listEl) return;
-    const res = await API.request('getAuditLogs', {}, 'GET');
-    if (res.success && res.logs && res.logs.length) {
-      listEl.innerHTML = res.logs.slice(-6).reverse().map(log => `
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #e2e8f0; font-size:13px;">
+    if (listEl) {
+      listEl.innerHTML = logs.slice().reverse().slice(0, 6).map(l => `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #f1f5f9; font-size:12.5px;">
           <div>
-            <strong>${escapeHtml(log.action)}</strong>: <span class="text-muted">${escapeHtml(log.details || '')}</span>
-            <div style="font-size:11px; color:#64748b;">Actor: ${escapeHtml(log.actor)} | Target: ${escapeHtml(log.target || '')}</div>
+            <strong>${escapeHtml(l.actor)}</strong> &bull;
+            <span style="color:#0284c7; font-weight:600;">${escapeHtml(l.action)}</span> &bull;
+            <span class="text-muted">${escapeHtml(l.details || '')}</span>
           </div>
-          <span style="font-size:11px; font-family:monospace; color:#64748b;">${formatTime(log.timestamp)}</span>
+          <span class="text-muted" style="font-size:11px;">${formatTime(l.timestamp)}</span>
         </div>
-      `).join('');
-    } else {
-      listEl.innerHTML = '<div class="text-muted" style="padding:12px 0;">No logs recorded yet.</div>';
+      `).join('') || '<div class="text-muted" style="padding:10px 0;">No system logs recorded yet.</div>';
     }
   }
 
   /* =======================================================================
-     STUDENT MANAGEMENT
+     STUDENT REGISTRY CONTROLLER
      ======================================================================= */
   function populateStudentClassFilter() {
-    const filter = document.getElementById('studentClassFilter');
-    const modalSelect = document.getElementById('inpStudentClass');
-    const classes = getAccessibleClasses();
+    const sel = document.getElementById('studentClassFilter');
+    const modalSel = document.getElementById('inpStudentClass');
+    const classes = window.APP_CONFIG.classes || [];
 
-    if (filter) {
-      filter.innerHTML = '<option value="All">All Grade Levels</option>' +
+    if (sel && sel.children.length <= 1) {
+      sel.innerHTML = '<option value="All">All Grade Levels</option>' +
         classes.map(c => `<option value="${c}">${c}</option>`).join('');
     }
-    if (modalSelect) {
-      modalSelect.innerHTML = (window.APP_CONFIG.classes || []).map(c => `<option value="${c}">${c}</option>`).join('');
+    if (modalSel && modalSel.children.length === 0) {
+      modalSel.innerHTML = classes.map(c => `<option value="${c}">${c}</option>`).join('');
     }
   }
 
   async function loadStudentsTable() {
-    const search = document.getElementById('studentSearch') ? document.getElementById('studentSearch').value.trim() : '';
-    const selectedClass = document.getElementById('studentClassFilter') ? document.getElementById('studentClassFilter').value : 'All';
-
     const tbody = document.getElementById('studentsTableBody');
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted" style="padding:24px;">Loading student records...</td></tr>';
 
-    const res = await API.request('getStudents', { search, class: selectedClass }, 'GET');
+    const search = (document.getElementById('studentSearch')?.value || '').trim();
+    const classFilter = document.getElementById('studentClassFilter')?.value || 'All';
+
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted" style="padding:24px;">Loading student records...</td></tr>';
+
+    const res = await API.request('getStudents', { search, class: classFilter }, 'GET');
     if (!res.success) {
-      tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted" style="padding:24px; color:#ef4444;">${res.message || 'Error'}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted" style="padding:24px; color:#ef4444;">${res.message || 'Error loading students.'}</td></tr>`;
       return;
     }
 
     state.studentsCache = res.students || [];
-    const countBadge = document.getElementById('studentCountBadge');
-    if (countBadge) countBadge.textContent = `${state.studentsCache.length} enrolled`;
+
+    const badge = document.getElementById('studentCountBadge');
+    if (badge) badge.textContent = `${state.studentsCache.length} enrolled`;
 
     if (!state.studentsCache.length) {
-      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted" style="padding:28px;">No matching students found.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted" style="padding:24px;">No student records found matching filters.</td></tr>';
       return;
     }
 
     tbody.innerHTML = state.studentsCache.map(s => `
       <tr>
-        <td>
-          <div style="display:flex; align-items:center; gap:10px;">
-            <img src="${s.photoUrl || 'assets/icons/circle-user-round.png'}" 
-                 style="width:34px; height:34px; border-radius:50%; object-fit:cover; border:1px solid #cbd5e1;"
-                 onerror="this.src='assets/icons/circle-user-round.png'">
-            <div>
-              <span class="font-bold">${escapeHtml(s.fullName)}</span>
-              <div style="font-size:11px; color:#64748b;">${escapeHtml(s.gender || '')}</div>
-            </div>
-          </div>
+        <td style="width:48px;">
+          <img src="${s.photoUrl || 'assets/icons/circle-user-round.png'}" class="user-avatar-sm" alt="Photo" style="object-fit:cover;">
         </td>
+        <td><strong>${escapeHtml(s.fullName)}</strong></td>
         <td><code style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-weight:700;">${escapeHtml(s.studentId)}</code></td>
-        <td><span class="font-semibold">${escapeHtml(s.class)}</span></td>
+        <td><span style="font-weight:700; color:#0284c7;">${escapeHtml(s.class)}</span></td>
         <td>${escapeHtml(s.guardianName || 'N/A')}</td>
         <td>${escapeHtml(s.guardianPhone || 'N/A')}</td>
-        <td><span style="display:inline-block; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:700; background:#dcfce7; color:#15803d;">${escapeHtml(s.status || 'Active')}</span></td>
+        <td><code style="font-size:11px; background:#f1f5f9; padding:2px 6px; border-radius:4px;">${escapeHtml(s.password || 'student123')}</code></td>
+        <td>
+          <span style="display:inline-block; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:700; background:${s.status === 'Active' ? '#dcfce7' : '#fee2e2'}; color:${s.status === 'Active' ? '#15803d' : '#b91c1c'};">
+            ${escapeHtml(s.status || 'Active')}
+          </span>
+        </td>
         <td>
           <div style="display:flex; gap:6px;">
             <button class="btn btn-secondary btn-sm" onclick="LOLCA_APP.viewStudentReportCard('${s.studentId}')" title="Official Report Card">
@@ -561,24 +809,36 @@ const LOLCA_APP = (function() {
     if (form) form.reset();
     document.getElementById('modalAddStudentTitle').textContent = 'Enroll New Student';
     document.getElementById('editStudentOriginalId').value = '';
+    document.getElementById('inpStudentId').readOnly = false;
+    document.getElementById('inpStudentPassword').value = 'student123';
+    document.getElementById('inpStudentPhotoUrl').value = '';
+    document.getElementById('imgStudentPhotoPreview').src = 'assets/icons/circle-user-round.png';
+    populateStudentClassFilter();
     openModal('modalAddStudent');
   }
 
   function openEditStudentModal(studentId) {
-    const s = state.studentsCache.find(st => st.studentId === studentId);
-    if (!s) return;
-    document.getElementById('modalAddStudentTitle').textContent = `Edit Student: ${s.fullName}`;
-    document.getElementById('editStudentOriginalId').value = s.studentId;
-    document.getElementById('inpStudentId').value = s.studentId;
-    document.getElementById('inpStudentName').value = s.fullName;
-    document.getElementById('inpStudentClass').value = s.class;
-    document.getElementById('inpStudentGender').value = s.gender || 'Male';
-    document.getElementById('inpStudentDob').value = s.dob || '';
-    document.getElementById('inpGuardianName').value = s.guardianName || '';
-    document.getElementById('inpGuardianPhone').value = s.guardianPhone || '';
-    document.getElementById('inpGuardianEmail').value = s.guardianEmail || '';
-    document.getElementById('inpStudentAddress').value = s.address || '';
-    document.getElementById('inpStudentStatus').value = s.status || 'Active';
+    const student = state.studentsCache.find(s => s.studentId === studentId);
+    if (!student) return;
+
+    populateStudentClassFilter();
+    document.getElementById('modalAddStudentTitle').textContent = `Edit Record: ${student.fullName}`;
+    document.getElementById('editStudentOriginalId').value = student.studentId;
+    document.getElementById('inpStudentId').value = student.studentId;
+    document.getElementById('inpStudentId').readOnly = true;
+    document.getElementById('inpStudentName').value = student.fullName;
+    document.getElementById('inpStudentClass').value = student.class;
+    document.getElementById('inpStudentGender').value = student.gender || 'Male';
+    document.getElementById('inpStudentDob').value = student.dob || '';
+    document.getElementById('inpGuardianName').value = student.guardianName || '';
+    document.getElementById('inpGuardianPhone').value = student.guardianPhone || '';
+    document.getElementById('inpGuardianEmail').value = student.guardianEmail || '';
+    document.getElementById('inpStudentAddress').value = student.address || '';
+    document.getElementById('inpStudentStatus').value = student.status || 'Active';
+    document.getElementById('inpStudentPassword').value = student.password || 'student123';
+    document.getElementById('inpStudentPhotoUrl').value = student.photoUrl || '';
+    document.getElementById('imgStudentPhotoPreview').src = student.photoUrl || 'assets/icons/circle-user-round.png';
+
     openModal('modalAddStudent');
   }
 
@@ -588,7 +848,7 @@ const LOLCA_APP = (function() {
     const isEdit = Boolean(originalId);
 
     const payload = {
-      studentId: document.getElementById('inpStudentId').value.trim() || undefined,
+      studentId: isEdit ? originalId : (document.getElementById('inpStudentId').value.trim() || undefined),
       fullName: document.getElementById('inpStudentName').value.trim(),
       class: document.getElementById('inpStudentClass').value,
       gender: document.getElementById('inpStudentGender').value,
@@ -597,26 +857,28 @@ const LOLCA_APP = (function() {
       guardianPhone: document.getElementById('inpGuardianPhone').value.trim(),
       guardianEmail: document.getElementById('inpGuardianEmail').value.trim(),
       address: document.getElementById('inpStudentAddress').value.trim(),
-      status: document.getElementById('inpStudentStatus').value
+      status: document.getElementById('inpStudentStatus').value,
+      password: document.getElementById('inpStudentPassword').value.trim() || 'student123',
+      photoUrl: document.getElementById('inpStudentPhotoUrl').value.trim()
     };
 
-    if (isEdit) payload.studentId = originalId;
     const action = isEdit ? 'updateStudent' : 'addStudent';
     const res = await API.request(action, payload);
     if (!res.success) {
       API.toastError(res.message || 'Operation failed.');
       return;
     }
+
     closeModal('modalAddStudent');
-    API.toastSuccess(isEdit ? 'Student updated.' : 'Student enrolled.');
+    API.toastSuccess(isEdit ? 'Student record updated.' : 'Student enrolled successfully.');
     loadStudentsTable();
   }
 
-  function confirmDeleteStudent(studentId, fullName) {
-    if (confirm(`Remove student ${fullName} (${studentId}) from registry?`)) {
+  function confirmDeleteStudent(studentId, name) {
+    if (confirm(`Are you sure you want to delete student '${name}' (${studentId})?`)) {
       API.request('deleteStudent', { studentId }).then(res => {
         if (res.success) {
-          API.toastSuccess('Student removed.');
+          API.toastSuccess('Student deleted.');
           loadStudentsTable();
         } else {
           API.toastError(res.message);
@@ -626,7 +888,7 @@ const LOLCA_APP = (function() {
   }
 
   /* =======================================================================
-     GRADES ENTRY & MARKSHEET (PER STUDENT PER SUBJECT)
+     GRADES ENTRY & ASSESSMENT MARKSHEET (PER CLASS & PER SUBJECT)
      ======================================================================= */
   function initGradesSelectors() {
     const classSel = document.getElementById('gradesSelectClass');
@@ -645,37 +907,64 @@ const LOLCA_APP = (function() {
     if (!classSel || !subjSel) return;
     const subjects = getAccessibleSubjects(classSel.value);
     subjSel.innerHTML = subjects.map(s => `<option value="${s}">${s}</option>`).join('');
+    if (subjects.length) {
+      subjSel.value = subjects[0];
+    }
   }
 
   async function loadClassMarksheet() {
-    const className = document.getElementById('gradesSelectClass').value;
-    const subject = document.getElementById('gradesSelectSubject').value;
+    const classSel = document.getElementById('gradesSelectClass');
+    const subjSel = document.getElementById('gradesSelectSubject');
+    if (!classSel || !subjSel) return;
 
+    const className = classSel.value;
+    const subject = subjSel.value;
+    const infoBanner = document.getElementById('marksheetHeaderInfo');
     const tbody = document.getElementById('marksheetTableBody');
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="12" class="text-center text-muted" style="padding:24px;">Loading marksheet...</td></tr>';
 
-    // Get students in this class
-    const resS = await API.request('getStudents', { class: className }, 'GET');
-    const students = resS.students || [];
-
-    if (!students.length) {
-      tbody.innerHTML = `<tr><td colspan="12" class="text-center text-muted" style="padding:24px;">No students enrolled in ${escapeHtml(className)}.</td></tr>`;
+    if (!className || !subject) {
+      tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted" style="padding:24px;">Please select both a class and a subject.</td></tr>';
       return;
     }
 
-    // Build row for each student for this subject
-    tbody.innerHTML = students.map((s, idx) => `
+    tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted" style="padding:24px;">Loading marksheet for ${escapeHtml(subject)} (${escapeHtml(className)})...</td></tr>`;
+
+    const res = await API.request('getClassMarksheet', { className, subject }, 'GET');
+    if (!res.success) {
+      tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted" style="padding:24px; color:#ef4444;">${res.message || 'Error loading marksheet.'}</td></tr>`;
+      return;
+    }
+
+    const marksheet = res.marksheet || [];
+    if (infoBanner) {
+      infoBanner.innerHTML = `Currently Editing: <strong>${escapeHtml(subject)}</strong> &bull; Class: <strong>${escapeHtml(className)}</strong> (${marksheet.length} active students enrolled)`;
+    }
+
+    if (!marksheet.length) {
+      tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted" style="padding:24px;">No active students enrolled in ${escapeHtml(className)}.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = marksheet.map((s) => `
       <tr data-student-id="${s.studentId}">
-        <td><strong>${escapeHtml(s.fullName)}</strong><br><small class="text-muted">${s.studentId}</small></td>
-        <td><input type="number" min="0" max="100" class="input-field p-inp" data-field="p1" style="width:58px; text-align:center; padding:5px;" value="88"></td>
-        <td><input type="number" min="0" max="100" class="input-field p-inp" data-field="p2" style="width:58px; text-align:center; padding:5px;" value="89"></td>
-        <td><input type="number" min="0" max="100" class="input-field p-inp" data-field="p3" style="width:58px; text-align:center; padding:5px;" value="91"></td>
-        <td><input type="number" min="0" max="100" class="input-field p-inp" data-field="ex1" style="width:58px; text-align:center; padding:5px;" value="92"></td>
-        <td><input type="number" min="0" max="100" class="input-field p-inp" data-field="p4" style="width:58px; text-align:center; padding:5px;" value="90"></td>
-        <td><input type="number" min="0" max="100" class="input-field p-inp" data-field="p5" style="width:58px; text-align:center; padding:5px;" value="93"></td>
-        <td><input type="number" min="0" max="100" class="input-field p-inp" data-field="p6" style="width:58px; text-align:center; padding:5px;" value="94"></td>
-        <td><input type="number" min="0" max="100" class="input-field p-inp" data-field="ex2" style="width:58px; text-align:center; padding:5px;" value="95"></td>
+        <td>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <img src="${s.photoUrl || 'assets/icons/circle-user-round.png'}" class="user-avatar-sm" alt="Photo" style="object-fit:cover;">
+            <div>
+              <strong>${escapeHtml(s.fullName)}</strong><br>
+              <small class="text-muted" style="font-family:monospace;">${s.studentId}</small>
+            </div>
+          </div>
+        </td>
+        <td><input type="number" min="0" max="100" class="input-field p-inp" data-field="p1" style="width:58px; text-align:center; padding:5px;" value="${s.p1 ?? ''}"></td>
+        <td><input type="number" min="0" max="100" class="input-field p-inp" data-field="p2" style="width:58px; text-align:center; padding:5px;" value="${s.p2 ?? ''}"></td>
+        <td><input type="number" min="0" max="100" class="input-field p-inp" data-field="p3" style="width:58px; text-align:center; padding:5px;" value="${s.p3 ?? ''}"></td>
+        <td><input type="number" min="0" max="100" class="input-field p-inp" data-field="ex1" style="width:58px; text-align:center; padding:5px;" value="${s.ex1 ?? ''}"></td>
+        <td><input type="number" min="0" max="100" class="input-field p-inp" data-field="p4" style="width:58px; text-align:center; padding:5px;" value="${s.p4 ?? ''}"></td>
+        <td><input type="number" min="0" max="100" class="input-field p-inp" data-field="p5" style="width:58px; text-align:center; padding:5px;" value="${s.p5 ?? ''}"></td>
+        <td><input type="number" min="0" max="100" class="input-field p-inp" data-field="p6" style="width:58px; text-align:center; padding:5px;" value="${s.p6 ?? ''}"></td>
+        <td><input type="number" min="0" max="100" class="input-field p-inp" data-field="ex2" style="width:58px; text-align:center; padding:5px;" value="${s.ex2 ?? ''}"></td>
         <td>
           <button type="button" class="btn btn-primary btn-sm" onclick="LOLCA_APP.saveSingleStudentGrade('${s.studentId}', '${escapeHtml(subject)}', this)">
             Save
@@ -700,19 +989,239 @@ const LOLCA_APP = (function() {
       p5: tr.querySelector('[data-field="p5"]').value,
       p6: tr.querySelector('[data-field="p6"]').value,
       ex2: tr.querySelector('[data-field="ex2"]').value,
-      recordedBy: state.currentUser ? state.currentUser.email : 'Admin'
+      recordedBy: state.currentUser ? (state.currentUser.fullName || state.currentUser.email) : 'Admin'
     };
 
     const res = await API.request('saveStudentSubjectGrade', payload);
     if (res.success) {
+      tr.style.backgroundColor = '#ecfdf5';
+      setTimeout(() => tr.style.backgroundColor = '', 1500);
       API.toastSuccess(`Grades saved for ${subject}!`);
     } else {
       API.toastError(res.message || 'Could not save grade.');
     }
   }
 
+  async function saveAllClassMarksheet() {
+    const subjSel = document.getElementById('gradesSelectSubject');
+    const classSel = document.getElementById('gradesSelectClass');
+    if (!subjSel || !classSel) return;
+
+    const subject = subjSel.value;
+    const className = classSel.value;
+    const rows = document.querySelectorAll('#marksheetTableBody tr[data-student-id]');
+
+    if (!rows.length) {
+      API.toastError('No students to save.');
+      return;
+    }
+
+    const records = [];
+    rows.forEach(tr => {
+      const studentId = tr.getAttribute('data-student-id');
+      records.push({
+        studentId: studentId,
+        p1: tr.querySelector('[data-field="p1"]').value,
+        p2: tr.querySelector('[data-field="p2"]').value,
+        p3: tr.querySelector('[data-field="p3"]').value,
+        ex1: tr.querySelector('[data-field="ex1"]').value,
+        p4: tr.querySelector('[data-field="p4"]').value,
+        p5: tr.querySelector('[data-field="p5"]').value,
+        p6: tr.querySelector('[data-field="p6"]').value,
+        ex2: tr.querySelector('[data-field="ex2"]').value
+      });
+    });
+
+    const res = await API.request('saveClassMarksheetBatch', { className, subject, records });
+    if (res.success) {
+      rows.forEach(tr => {
+        tr.style.backgroundColor = '#ecfdf5';
+        setTimeout(() => tr.style.backgroundColor = '', 1500);
+      });
+      API.toastSuccess(res.message || `Saved all grades for ${subject}!`);
+    } else {
+      API.toastError(res.message || 'Error saving marksheet batch.');
+    }
+  }
+
   /* =======================================================================
-     FEES & PAYMENT TRACKING (EXACT RECEIPT MATCHING IMAGE 6)
+     CURRICULUM & SUBJECTS TAB CONTROLLER
+     ======================================================================= */
+  async function loadSubjectsView() {
+    const res = await API.request('getSubjects', {}, 'GET');
+    if (!res.success) return;
+
+    const preCont = document.getElementById('preschoolSubjectsContainer');
+    const elemCont = document.getElementById('elementarySubjectsContainer');
+
+    const preCurr = res.preschoolCurriculum || {};
+    const elemCurr = res.elementaryCurriculum || {};
+
+    if (preCont) {
+      preCont.innerHTML = Object.entries(preCurr).map(([cat, list]) => `
+        <div class="curriculum-card">
+          <div class="curriculum-header">
+            <strong style="color:#0284c7; font-size:13px;">${escapeHtml(cat)}</strong>
+            <span style="font-size:11px; background:#e0f2fe; color:#0284c7; padding:2px 8px; border-radius:9999px; font-weight:700;">${list.length} subjects</span>
+          </div>
+          <div>
+            ${list.map(s => `
+              <span class="subject-badge-item">
+                ${escapeHtml(s)}
+                <button type="button" class="btn-remove-subj" onclick="LOLCA_APP.deleteSubject('preschool', '${escapeHtml(cat)}', '${escapeHtml(s)}')" title="Delete Subject">&times;</button>
+              </span>
+            `).join('')}
+          </div>
+        </div>
+      `).join('') || '<div class="text-muted">No preschool subjects defined.</div>';
+    }
+
+    if (elemCont) {
+      elemCont.innerHTML = Object.entries(elemCurr).map(([cat, list]) => `
+        <div class="curriculum-card">
+          <div class="curriculum-header">
+            <strong style="color:#166534; font-size:13px;">${escapeHtml(cat)}</strong>
+            <span style="font-size:11px; background:#dcfce7; color:#15803d; padding:2px 8px; border-radius:9999px; font-weight:700;">${list.length} subjects</span>
+          </div>
+          <div>
+            ${list.map(s => `
+              <span class="subject-badge-item">
+                ${escapeHtml(s)}
+                <button type="button" class="btn-remove-subj" onclick="LOLCA_APP.deleteSubject('elementary', '${escapeHtml(cat)}', '${escapeHtml(s)}')" title="Delete Subject">&times;</button>
+              </span>
+            `).join('')}
+          </div>
+        </div>
+      `).join('') || '<div class="text-muted">No elementary subjects defined.</div>';
+    }
+  }
+
+  function openAddSubjectModal(level = 'preschool') {
+    const form = document.getElementById('formAddSubject');
+    if (form) form.reset();
+    document.getElementById('selSubjectLevel').value = level;
+    document.getElementById('modalAddSubjectTitle').textContent = `Add New ${level === 'preschool' ? 'Preschool' : 'Primary'} Subject`;
+    openModal('modalAddSubject');
+  }
+
+  async function handleSaveSubjectSubmit(e) {
+    e.preventDefault();
+    const level = document.getElementById('selSubjectLevel').value;
+    const category = document.getElementById('inpSubjectCategory').value.trim();
+    const subjectName = document.getElementById('inpSubjectName').value.trim();
+
+    const res = await API.request('addSubject', { level, category, subjectName });
+    if (!res.success) {
+      API.toastError(res.message || 'Could not add subject.');
+      return;
+    }
+
+    closeModal('modalAddSubject');
+    API.toastSuccess(res.message || 'Subject added successfully.');
+    loadSubjectsView();
+    updateGradesSubjectOptions();
+  }
+
+  async function deleteSubject(level, category, subjectName) {
+    if (confirm(`Remove '${subjectName}' from ${category}?`)) {
+      const res = await API.request('deleteSubject', { level, category, subjectName });
+      if (res.success) {
+        API.toastSuccess(res.message);
+        loadSubjectsView();
+        updateGradesSubjectOptions();
+      } else {
+        API.toastError(res.message);
+      }
+    }
+  }
+
+  /* =======================================================================
+     CLASS FEES & REQUIREMENTS CONTROLLER
+     ======================================================================= */
+  async function loadFeesScheduleView() {
+    const tbody = document.getElementById('feesScheduleTableBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted" style="padding:24px;">Loading fee schedules...</td></tr>';
+
+    const res = await API.request('getFeesSchedule', {}, 'GET');
+    if (!res.success) {
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted" style="padding:24px; color:#ef4444;">${res.message || 'Error loading fees.'}</td></tr>`;
+      return;
+    }
+
+    const fees = res.fees || {};
+    const classes = window.APP_CONFIG.classes || Object.keys(fees);
+
+    tbody.innerHTML = classes.map(c => {
+      const info = fees[c] || { tuition: 0, other: 0, total: 0, academicYear: '2025-2026', requirements: 'Standard Supplies' };
+      return `
+        <tr>
+          <td><strong style="color:#1e3a8a; font-size:13.5px;">${escapeHtml(c)}</strong></td>
+          <td><strong style="color:#15803d;">$${info.tuition}</strong></td>
+          <td><strong style="color:#0284c7;">$${info.other}</strong></td>
+          <td><span style="font-weight:900; font-size:14px; color:#1e3a8a;">$${info.total}</span></td>
+          <td>${escapeHtml(info.academicYear || '2025-2026')}</td>
+          <td style="max-width:320px; font-size:12px; color:#475569;">
+            ${escapeHtml(info.requirements || 'No specific supplies listed.')}
+          </td>
+          <td>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="LOLCA_APP.openEditClassFeeModal('${escapeHtml(c)}')">
+              <img src="assets/icons/pencil.png" class="sys-icon" alt="Edit">
+              Edit Fee & Requirements
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  async function openEditClassFeeModal(className) {
+    const res = await API.request('getFeesSchedule', {}, 'GET');
+    const fees = res.fees || {};
+    const info = fees[className] || { tuition: 100, other: 30, total: 130, academicYear: '2025-2026', requirements: '' };
+
+    document.getElementById('modalEditClassFeeTitle').textContent = `Edit Fees & Requirements: ${className}`;
+    document.getElementById('inpFeeClassName').value = className;
+    document.getElementById('inpFeeYear').value = info.academicYear || '2025-2026';
+    document.getElementById('inpFeeTuition').value = info.tuition;
+    document.getElementById('inpFeeOther').value = info.other;
+    document.getElementById('inpFeeTotal').value = info.total;
+    document.getElementById('inpFeeRequirements').value = info.requirements || '';
+
+    openModal('modalEditClassFee');
+  }
+
+  async function handleSaveClassFeeSubmit(e) {
+    e.preventDefault();
+    const className = document.getElementById('inpFeeClassName').value;
+    const tuition = Number(document.getElementById('inpFeeTuition').value) || 0;
+    const other = Number(document.getElementById('inpFeeOther').value) || 0;
+    const total = Number(document.getElementById('inpFeeTotal').value) || (tuition + other);
+    const academicYear = document.getElementById('inpFeeYear').value.trim();
+    const requirements = document.getElementById('inpFeeRequirements').value.trim();
+
+    const res = await API.request('updateClassFee', {
+      class: className,
+      tuition,
+      other,
+      total,
+      academicYear,
+      requirements
+    });
+
+    if (!res.success) {
+      API.toastError(res.message || 'Error updating fee.');
+      return;
+    }
+
+    closeModal('modalEditClassFee');
+    API.toastSuccess(res.message || `Fees & requirements updated for ${className}!`);
+    loadFeesScheduleView();
+  }
+
+  /* =======================================================================
+     FEES & PAYMENT TRACKING (EXACT HALF-A4 RECEIPT MATCHING IMAGE 6)
      ======================================================================= */
   async function initPaymentsSection() {
     const sel = document.getElementById('paymentStudentSelect');
@@ -724,7 +1233,10 @@ const LOLCA_APP = (function() {
     sel.innerHTML = '<option value="">-- Choose Student to View Payments & Issue Receipt --</option>' +
       students.map(s => `<option value="${s.studentId}">${s.fullName} (${s.class} - ${s.studentId})</option>`).join('');
 
-    if (students.length) {
+    if (state.selectedStudentForPayment) {
+      sel.value = state.selectedStudentForPayment;
+      loadStudentPaymentSheet(state.selectedStudentForPayment);
+    } else if (students.length) {
       sel.value = students[0].studentId;
       loadStudentPaymentSheet(students[0].studentId);
     }
@@ -745,12 +1257,12 @@ const LOLCA_APP = (function() {
     }
 
     const st = res.student;
-    const fee = res.feeStructure;
-    const sm = res.summary;
+    const fee = res.feeStructure || {};
+    const sm = res.summary || {};
     const tPay = res.tuitionPayments || [];
     const oPay = res.otherPayments || [];
 
-    // Pre-fill payment modal fields
+    // Pre-fill record payment modal
     const mStudentId = document.getElementById('recordPayStudentId');
     const mClass = document.getElementById('recordPayClass');
     const mBal = document.getElementById('recordPayBalance');
@@ -765,10 +1277,10 @@ const LOLCA_APP = (function() {
           <img src="assets/images/LOLCA logo circle shape.png" alt="LOLCA Crest" class="receipt-logo-crest">
           <div class="receipt-header-text">
             <h2>LIGHT OF LIFE CHRISTIAN ACADEMY (LOLCA)</h2>
+            <div class="receipt-motto">"Assuring Full Life Through Sound Academic and Spiritual Education"</div>
             <div class="receipt-location-info">
               Wakor Junction, Light Community, Jlazon, Lower Margibi / Montserrado County, Republic of Liberia<br>
-              Tel: 0778240169 / 0886383455 / 0777908308<br>
-              Email: bavidngombu15@gmail.com | WhatsApp: 0776277517
+              Tel: 0778240169 / 0886383455 / 0777908308 &bull; WhatsApp: 0776277517 &bull; Email: bavidngombu15@gmail.com
             </div>
           </div>
           <img src="assets/images/LOLCA logo circle shape.png" alt="LOLCA Crest" class="receipt-logo-crest">
@@ -778,20 +1290,39 @@ const LOLCA_APP = (function() {
 
         <!-- Title Box -->
         <div class="receipt-section-box-title">
-          STUDENT PAYMENTS INFORMATION TRACKING
+          OFFICIAL STUDENT PAYMENT RECEIPT &amp; FINANCIAL STATEMENT
         </div>
 
-        <!-- Student Meta Table -->
+        <!-- Student Meta Table (with photo thumbnail) -->
         <table class="receipt-student-meta-table">
           <tr>
-            <td style="width:50%;">STUDENT NAME: <span style="font-weight:normal; margin-left:8px;">${escapeHtml(st.fullName)}</span></td>
-            <td style="width:50%;">CLASS: <span style="font-weight:normal; margin-left:8px;">${escapeHtml(st.class)}</span></td>
+            <td style="width:50%;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                ${st.photoUrl ? `<img src="${st.photoUrl}" class="user-avatar-sm" alt="Student Photo">` : ''}
+                <div>
+                  STUDENT NAME: <span style="font-weight:normal; margin-left:6px;">${escapeHtml(st.fullName)}</span><br>
+                  <small class="text-muted">ID: <code style="font-weight:700;">${escapeHtml(st.studentId)}</code></small>
+                </div>
+              </div>
+            </td>
+            <td style="width:50%;">
+              CLASS: <span style="font-weight:normal; margin-left:8px;">${escapeHtml(st.class)}</span><br>
+              SCHOOL YEAR: <span style="font-weight:normal; margin-left:8px;">${escapeHtml(fee.academicYear || '2025-2026')}</span>
+            </td>
           </tr>
           <tr>
             <td>PARENT / GUARDIAN: <span style="font-weight:normal; margin-left:8px;">${escapeHtml(st.guardianName || 'N/A')}</span></td>
-            <td>COUNT. (PHONE): <span style="font-weight:normal; margin-left:8px;">${escapeHtml(st.guardianPhone || 'N/A')}</span></td>
+            <td>PHONE: <span style="font-weight:normal; margin-left:8px;">${escapeHtml(st.guardianPhone || 'N/A')}</span></td>
           </tr>
         </table>
+
+        <!-- Class Requirements Summary Box (Dynamically tied to assigned class) -->
+        ${fee.requirements ? `
+          <div class="receipt-requirements-box">
+            <strong>Mandatory Class Supplies &amp; Requirements for ${escapeHtml(st.class)}:</strong><br>
+            ${escapeHtml(fee.requirements)}
+          </div>
+        ` : ''}
 
         <!-- Box 1: Tuition Fees -->
         <div class="receipt-section-box-title">
@@ -801,10 +1332,10 @@ const LOLCA_APP = (function() {
         <table class="receipt-items-table">
           <thead>
             <tr>
-              <th style="width:110px;">DATE</th>
+              <th style="width:95px;">DATE</th>
               <th>PAYMENT DESCRIPTION</th>
               <th style="width:110px;">RECEIPT #</th>
-              <th style="width:90px;">AMOUNT</th>
+              <th style="width:85px;">AMOUNT</th>
               <th>COMMENTS</th>
             </tr>
           </thead>
@@ -818,7 +1349,7 @@ const LOLCA_APP = (function() {
                 <td>${escapeHtml(p.comments || '-')}</td>
               </tr>
             `).join('') : `
-              <tr><td colspan="5" class="text-center text-muted" style="padding:10px;">No tuition payments entered yet.</td></tr>
+              <tr><td colspan="5" class="text-center text-muted" style="padding:6px;">No tuition payments entered yet.</td></tr>
             `}
           </tbody>
         </table>
@@ -831,10 +1362,10 @@ const LOLCA_APP = (function() {
         <table class="receipt-items-table">
           <thead>
             <tr>
-              <th style="width:110px;">DATE</th>
+              <th style="width:95px;">DATE</th>
               <th>PAYMENT DESCRIPTION</th>
               <th style="width:110px;">RECEIPT #</th>
-              <th style="width:90px;">AMOUNT</th>
+              <th style="width:85px;">AMOUNT</th>
               <th>COMMENT</th>
             </tr>
           </thead>
@@ -848,7 +1379,7 @@ const LOLCA_APP = (function() {
                 <td>${escapeHtml(p.comments || '-')}</td>
               </tr>
             `).join('') : `
-              <tr><td colspan="5" class="text-center text-muted" style="padding:10px;">No other fee payments recorded.</td></tr>
+              <tr><td colspan="5" class="text-center text-muted" style="padding:6px;">No other fee payments recorded.</td></tr>
             `}
           </tbody>
         </table>
@@ -871,11 +1402,42 @@ const LOLCA_APP = (function() {
           </div>
         </div>
 
+        <!-- Secretary Signature & Official Stamp Section (Half-A4 Format) -->
+        <div class="receipt-signatures-container">
+          <div class="receipt-signatures-grid">
+            <!-- Left: Secretary / Bursar -->
+            <div class="signature-col">
+              <div class="sig-line"></div>
+              <div class="sig-label">SECRETARY / BURSAR SIGNATURE</div>
+              <div class="sig-date">Date: ${new Date().toLocaleDateString()}</div>
+            </div>
+
+            <!-- Center: School Stamp Box -->
+            <div class="stamp-box-wrapper">
+              <div class="stamp-box">
+                <div class="stamp-title">OFFICIAL SCHOOL</div>
+                <div class="stamp-title">STAMP / SEAL</div>
+                <div class="stamp-subtitle">LOLCA BURSAR OFFICE</div>
+              </div>
+            </div>
+
+            <!-- Right: Parent / Payer -->
+            <div class="signature-col">
+              <div class="sig-line"></div>
+              <div class="sig-label">PARENT / PAYER SIGNATURE</div>
+              <div class="sig-date">Date: ____________________</div>
+            </div>
+          </div>
+          <div class="receipt-footer-instructions">
+            Secretary of the school to print, sign, and stamp before issuing to student or parent. Valid only with official school seal.
+          </div>
+        </div>
+
         <!-- Actions in UI -->
-        <div class="no-print" style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;">
+        <div class="no-print" style="margin-top:16px; display:flex; justify-content:flex-end; gap:10px;">
           <button type="button" class="btn btn-secondary" onclick="window.print()">
             <img src="assets/icons/download (2).png" class="sys-icon" alt="Print">
-            Print Official Receipt
+            Print Official Receipt (Half A4)
           </button>
           <button type="button" class="btn btn-primary" onclick="LOLCA_APP.openRecordPaymentModal()">
             <img src="assets/icons/square-dashed-plus.png" class="sys-icon" alt="Add">
@@ -887,6 +1449,16 @@ const LOLCA_APP = (function() {
   }
 
   function openRecordPaymentModal() {
+    const pAmount = document.getElementById('recordPayAmount');
+    const pDesc = document.getElementById('recordPayDesc');
+    const pRec = document.getElementById('recordPayReceiptNum');
+    const pComm = document.getElementById('recordPayComments');
+
+    if (pAmount) pAmount.value = '';
+    if (pDesc) pDesc.value = '';
+    if (pRec) pRec.value = '';
+    if (pComm) pComm.value = '';
+
     openModal('modalRecordPayment');
   }
 
@@ -894,38 +1466,34 @@ const LOLCA_APP = (function() {
     e.preventDefault();
     const studentId = document.getElementById('recordPayStudentId').value;
     const paymentType = document.getElementById('recordPayType').value;
-    const amount = Number(document.getElementById('recordPayAmount').value);
-    const desc = document.getElementById('recordPayDesc').value.trim();
+    const amount = document.getElementById('recordPayAmount').value;
+    const paymentDescription = document.getElementById('recordPayDesc').value.trim();
     const receiptNum = document.getElementById('recordPayReceiptNum').value.trim();
     const comments = document.getElementById('recordPayComments').value.trim();
-
-    if (!studentId || !amount || amount <= 0) {
-      API.toastError('Please enter a valid payment amount.');
-      return;
-    }
 
     const payload = {
       studentId: studentId,
       paymentType: paymentType,
       amount: amount,
-      paymentDescription: desc || `${paymentType} Payment`,
+      paymentDescription: paymentDescription || undefined,
       receiptNumber: receiptNum || undefined,
       comments: comments,
-      recordedBy: state.currentUser ? state.currentUser.email : 'Admin'
+      recordedBy: state.currentUser ? (state.currentUser.fullName || state.currentUser.email) : 'Admin'
     };
 
     const res = await API.request('recordPayment', payload);
-    if (res.success) {
-      closeModal('modalRecordPayment');
-      API.toastSuccess(`Payment of $${amount} recorded! Balance updated.`);
-      loadStudentPaymentSheet(studentId);
-    } else {
-      API.toastError(res.message || 'Error recording payment.');
+    if (!res.success) {
+      API.toastError(res.message || 'Payment recording failed.');
+      return;
     }
+
+    closeModal('modalRecordPayment');
+    API.toastSuccess(`Payment of $${amount} recorded with Receipt #${res.summary ? receiptNum || 'Generated' : ''}!`);
+    loadStudentPaymentSheet(studentId);
   }
 
   /* =======================================================================
-     REPORT CARDS (EXACT 2-PAGE BOOKLET MATCHING IMAGES 1, 2, 3, 4)
+     OFFICIAL 2-PAGE REPORT CARDS (PRESCHOOL VS ELEMENTARY STRICT SEPARATION)
      ======================================================================= */
   async function initReportsSection() {
     const sel = document.getElementById('reportStudentSelect');
@@ -934,10 +1502,13 @@ const LOLCA_APP = (function() {
     const res = await API.request('getStudents', { search: '', class: 'All' }, 'GET');
     const students = res.students || [];
 
-    sel.innerHTML = '<option value="">-- Choose Student to View & Print Report Card --</option>' +
+    sel.innerHTML = '<option value="">-- Choose Student to View Official Report Card --</option>' +
       students.map(s => `<option value="${s.studentId}">${s.fullName} (${s.class} - ${s.studentId})</option>`).join('');
 
-    if (students.length) {
+    if (state.selectedStudentForReport) {
+      sel.value = state.selectedStudentForReport;
+      generateOfficialReportCard(state.selectedStudentForReport);
+    } else if (students.length) {
       sel.value = students[0].studentId;
       generateOfficialReportCard(students[0].studentId);
     }
@@ -965,9 +1536,9 @@ const LOLCA_APP = (function() {
 
     container.innerHTML = `
       <div class="report-booklet-wrapper">
-        <div class="no-print" style="width:100%; max-width:950px; display:flex; justify-content:space-between; align-items:center;">
-          <h3 style="font-size:16px; font-weight:800; color:#1e293b;">
-            Official 2-Page Half A4 Report Card - ${escapeHtml(st.fullName)} (${escapeHtml(st.class)})
+        <div class="no-print" style="width:100%; max-width:950px; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 style="font-size:16px; font-weight:800; color:#1e293b; margin:0;">
+            Official 2-Page Report Card - ${escapeHtml(st.fullName)} (${escapeHtml(st.class)})
           </h3>
           <button type="button" class="btn btn-secondary" onclick="window.print()">
             <img src="assets/icons/download (2).png" class="sys-icon" alt="Print">
@@ -1011,7 +1582,7 @@ const LOLCA_APP = (function() {
 
             <!-- Right: Cover Crest, Title & Parent Signatures Table -->
             <div class="cover-right-box">
-              <div class="cover-header-row">
+              <div class="cover-header-row" style="align-items:flex-start;">
                 <img src="assets/images/LOLCA logo circle shape.png" alt="LOLCA Crest" class="cover-shield-crest">
                 <div class="cover-header-text">
                   <h3>LIGHT OF LIFE CHRISTIAN ACADEMY (LOLCA)</h3>
@@ -1019,10 +1590,19 @@ const LOLCA_APP = (function() {
                     Light Community, Jlazon, Lower Margibi<br>
                     Republic of Liberia<br>
                     Tel: 0778240169 / 0886383455 / 0777908308<br>
-                    Email: bavidngombu15@gmail.com<br>
-                    WhatsApp Number: 0776277517
+                    Email: bavidngombu15@gmail.com &bull; WhatsApp: 0776277517
                   </div>
                 </div>
+                ${st.photoUrl ? `
+                  <div class="report-cover-photo-frame" title="Student Passport Photo">
+                    <img src="${st.photoUrl}" alt="Photo">
+                  </div>
+                ` : `
+                  <div class="report-cover-photo-frame" style="display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:10px; color:#94a3b8;">
+                    <img src="assets/icons/circle-user-round.png" style="width:36px; height:36px; opacity:0.4;" alt="Avatar">
+                    Photo
+                  </div>
+                `}
               </div>
 
               <div class="report-main-badge-title">
@@ -1030,8 +1610,8 @@ const LOLCA_APP = (function() {
               </div>
 
               <div style="font-size:13px; line-height:1.9; margin-bottom:12px;">
-                Student's Name <span class="blank-fill-line" style="min-width:240px;">${escapeHtml(st.fullName)}</span><br>
-                Grade: <span class="blank-fill-line" style="min-width:90px;">${escapeHtml(st.class)}</span>&nbsp;&nbsp;&nbsp;&nbsp;School Year: <span class="blank-fill-line" style="min-width:90px;">2025-2026</span>
+                Student's Name <span class="blank-fill-line" style="min-width:230px;">${escapeHtml(st.fullName)}</span><br>
+                Grade: <span class="blank-fill-line" style="min-width:90px;">${escapeHtml(st.class)}</span>&nbsp;&nbsp;&nbsp;&nbsp;School Year: <span class="blank-fill-line" style="min-width:90px;">${escapeHtml(st.academicYear || '2025-2026')}</span>
               </div>
 
               <div class="parents-guardian-heading">PARENTS OR GUARDIAN</div>
@@ -1090,11 +1670,11 @@ const LOLCA_APP = (function() {
                   ${c.rows.map(r => `
                     <tr>
                       <td class="subj-name-cell">${escapeHtml(r.subject)}</td>
-                      <td>${r.p1}</td>
-                      <td>${r.p2}</td>
-                      <td>${r.p3}</td>
-                      <td>${r.ex1}</td>
-                      <td><strong>${r.sem1Ave}</strong></td>
+                      <td>${r.p1 !== '' ? r.p1 : '—'}</td>
+                      <td>${r.p2 !== '' ? r.p2 : '—'}</td>
+                      <td>${r.p3 !== '' ? r.p3 : '—'}</td>
+                      <td>${r.ex1 !== '' ? r.ex1 : '—'}</td>
+                      <td><strong>${r.sem1Ave !== '' ? r.sem1Ave : '—'}</strong></td>
                     </tr>
                   `).join('')}
                 `).join('')}
@@ -1123,12 +1703,12 @@ const LOLCA_APP = (function() {
                   </tr>
                   ${c.rows.map(r => `
                     <tr>
-                      <td>${r.p4}</td>
-                      <td>${r.p5}</td>
-                      <td>${r.p6}</td>
-                      <td>${r.ex2}</td>
-                      <td><strong>${r.sem2Ave}</strong></td>
-                      <td><strong style="color:#0284c7;">${r.yrAve}</strong></td>
+                      <td>${r.p4 !== '' ? r.p4 : '—'}</td>
+                      <td>${r.p5 !== '' ? r.p5 : '—'}</td>
+                      <td>${r.p6 !== '' ? r.p6 : '—'}</td>
+                      <td>${r.ex2 !== '' ? r.ex2 : '—'}</td>
+                      <td><strong>${r.sem2Ave !== '' ? r.sem2Ave : '—'}</strong></td>
+                      <td><strong style="color:#0284c7;">${r.yrAve !== '' ? r.yrAve : '—'}</strong></td>
                     </tr>
                   `).join('')}
                 `).join('')}
@@ -1138,9 +1718,9 @@ const LOLCA_APP = (function() {
 
           <!-- Bottom: Conduct & Grading Key -->
           ${isPre ? `
-            <div style="font-size:11px; margin-top:14px; text-align:center; font-style:italic;">
-              <strong>Method of Grading:</strong><br>
-              A+ - = Excellent (95-100); A- = Very good (85-94); B+ = Good (80-84); B- = Fair (75-79); C = Needs Improvement (70-74); D = Poor (60-69)
+            <div style="font-size:11px; margin-top:14px; text-align:center; font-style:italic; background:#f8fafc; padding:8px; border-radius:4px; border:1px solid #e2e8f0;">
+              <strong>Method of Grading (Pre-Grade Scale):</strong><br>
+              A+ = Excellent (95-100); A- = Very good (85-94); B+ = Good (80-84); B- = Fair (75-79); C = Needs Improvement (70-74); D = Poor (60-69)
             </div>
           ` : `
             <div class="conduct-attendance-box">
@@ -1183,17 +1763,19 @@ const LOLCA_APP = (function() {
     if (!st) return;
     const nameEl = document.getElementById('studentPortalName');
     const classEl = document.getElementById('studentPortalClass');
+    const avatarEl = document.getElementById('studentPortalAvatar');
     if (nameEl) nameEl.textContent = st.fullName;
     if (classEl) classEl.textContent = `${st.class} • ID: ${st.studentId}`;
+    if (avatarEl && st.photoUrl) avatarEl.src = st.photoUrl;
   }
 
   async function loadStudentPortalData() {
     const st = state.currentUser;
     if (!st) return;
 
-    // Load student's report card
+    // Load student's own report card
     generateStudentOwnReportCard(st.studentId);
-    // Load student's payment receipts
+    // Load student's own payment receipt
     loadStudentOwnPaymentSheet(st.studentId);
   }
 
@@ -1206,7 +1788,6 @@ const LOLCA_APP = (function() {
       return;
     }
 
-    // Reuse the 2-page report card rendering
     const targetDiv = document.createElement('div');
     targetDiv.id = 'reportCardBookletContainer';
     container.innerHTML = '';
@@ -1247,8 +1828,13 @@ const LOLCA_APP = (function() {
       return `
         <tr>
           <td>
-            <strong>${escapeHtml(a.fullName || a.email)}</strong>
-            <div style="font-size:11px; color:#64748b;">${escapeHtml(a.email)}</div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <img src="${a.photoUrl || 'assets/icons/circle-user-round.png'}" class="user-avatar-sm" alt="Photo" style="object-fit:cover;">
+              <div>
+                <strong>${escapeHtml(a.fullName || a.email)}</strong>
+                <div style="font-size:11px; color:#64748b;">${escapeHtml(a.email)}</div>
+              </div>
+            </div>
           </td>
           <td><span class="font-semibold">${escapeHtml(a.role)}</span></td>
           <td><span style="font-size:12px; font-weight:600; color:#0284c7;">${escapeHtml(classes)}</span></td>
@@ -1285,6 +1871,8 @@ const LOLCA_APP = (function() {
     if (form) form.reset();
     document.getElementById('modalAddAdminTitle').textContent = 'Add Administrator or Teacher';
     document.getElementById('editAdminOriginalId').value = '';
+    document.getElementById('inpAdminPhotoUrl').value = '';
+    document.getElementById('imgAdminPhotoPreview').src = 'assets/icons/circle-user-round.png';
 
     // Populate class checkboxes
     const classContainer = document.getElementById('teacherClassesCheckboxes');
@@ -1311,6 +1899,8 @@ const LOLCA_APP = (function() {
     document.getElementById('inpAdminRole').value = admin.role;
     document.getElementById('inpAdminPhone').value = admin.phone || '';
     document.getElementById('inpAdmin2FA').checked = Boolean(admin.requires2FA);
+    document.getElementById('inpAdminPhotoUrl').value = admin.photoUrl || '';
+    document.getElementById('imgAdminPhotoPreview').src = admin.photoUrl || 'assets/icons/circle-user-round.png';
 
     const classContainer = document.getElementById('teacherClassesCheckboxes');
     if (classContainer) {
@@ -1348,6 +1938,7 @@ const LOLCA_APP = (function() {
       role: document.getElementById('inpAdminRole').value,
       password: document.getElementById('inpAdminPassword').value || undefined,
       phone: document.getElementById('inpAdminPhone').value.trim(),
+      photoUrl: document.getElementById('inpAdminPhotoUrl').value.trim(),
       requires2FA: document.getElementById('inpAdmin2FA').checked,
       assignedClasses: assignedClasses.length ? assignedClasses : ['all'],
       assignedSubjects: assignedSubjects,
@@ -1379,7 +1970,7 @@ const LOLCA_APP = (function() {
   }
 
   /* =======================================================================
-     AUDIT LOGS & SETTINGS (NO BACKEND URL IN UI)
+     AUDIT LOGS & SETTINGS
      ======================================================================= */
   async function loadAuditLogsTable() {
     const tbody = document.getElementById('auditTableBody');
@@ -1404,7 +1995,6 @@ const LOLCA_APP = (function() {
   }
 
   function loadSettingsView() {
-    // School configurations display (Strictly NO backend URL in UI!)
     const conf = window.APP_CONFIG;
     const name = document.getElementById('setSchoolName');
     const location = document.getElementById('setCampusLocation');
@@ -1417,6 +2007,11 @@ const LOLCA_APP = (function() {
     if (phones) phones.value = conf.contactPhones;
     if (email) email.value = conf.contactEmail;
     if (year) year.value = conf.academicYear;
+
+    const prev = document.getElementById('adminSelfPhotoPreview');
+    if (prev && state.currentUser && state.currentUser.photoUrl) {
+      prev.src = state.currentUser.photoUrl;
+    }
   }
 
   /* =======================================================================
@@ -1534,11 +2129,14 @@ const LOLCA_APP = (function() {
 
   function debounce(fn, delay) {
     let t;
-    return function(...args) {
+    return function (...args) {
       clearTimeout(t);
       t = setTimeout(() => fn.apply(this, args), delay);
     };
   }
+
+  // Self initialize on DOM load
+  document.addEventListener('DOMContentLoaded', init);
 
   return {
     init,
@@ -1549,10 +2147,16 @@ const LOLCA_APP = (function() {
     viewStudentReportCard,
     viewStudentPayments,
     saveSingleStudentGrade,
+    saveAllClassMarksheet,
     openRecordPaymentModal,
     openAddAdminModal,
     openEditAdminModal,
     confirmDeleteAdmin,
+    openAddSubjectModal,
+    deleteSubject,
+    openEditClassFeeModal,
+    shareLink,
+    installWebApp,
     closeModal
   };
 })();

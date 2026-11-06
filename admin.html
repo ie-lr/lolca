@@ -47,7 +47,7 @@
               <span class="text-muted" style="font-size: 11.5px;">2FA Protected</span>
             </div>
             <input type="password" id="adminPassword" class="input-field" 
-                   value="Admin@LOLCA2025" required placeholder="Enter password">
+                   required placeholder="Enter administrator or teacher password">
           </div>
 
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; font-size: 13px;">
@@ -89,7 +89,7 @@
         </div>
 
         <div class="sidebar-user-card">
-          <img src="assets/icons/circle-user-round.png" alt="User" class="user-avatar">
+          <img src="assets/icons/circle-user-round.png" id="sidebarUserAvatar" alt="User" class="user-avatar" style="object-fit:cover;">
           <div>
             <div id="sidebarUserName" class="user-info-name">Staff Admin</div>
             <div id="sidebarUserRole" class="user-info-role">Super Admin</div>
@@ -108,6 +108,14 @@
           <button type="button" class="sidebar-nav-item" data-tab="grades">
             <img src="assets/icons/file-text.png" class="sys-icon" alt="Grades">
             Grade Marksheets
+          </button>
+          <button type="button" class="sidebar-nav-item" data-tab="subjects" data-admin-only="true">
+            <img src="assets/icons/folders.png" class="sys-icon" alt="Subjects">
+            Curriculum & Subjects
+          </button>
+          <button type="button" class="sidebar-nav-item" data-tab="feesSchedule" data-admin-only="true">
+            <img src="assets/icons/landmark.png" class="sys-icon" alt="Fees Schedule">
+            Class Fees & Requirements
           </button>
           <button type="button" class="sidebar-nav-item" data-tab="payments">
             <img src="assets/icons/landmark.png" class="sys-icon" alt="Fees">
@@ -182,6 +190,26 @@
                 <div class="card-tile-info">
                   <span class="card-tile-title">GRADE ENTRY</span>
                   <span class="card-tile-desc">Add and edit student marks</span>
+                </div>
+              </div>
+
+              <div class="action-card-tile" data-target-tab="subjects" data-admin-only="true">
+                <div class="card-icon-square">
+                  <img src="assets/icons/folders.png" alt="Curriculum">
+                </div>
+                <div class="card-tile-info">
+                  <span class="card-tile-title">CURRICULUM & SUBJECTS</span>
+                  <span class="card-tile-desc">Add, edit, delete subjects</span>
+                </div>
+              </div>
+
+              <div class="action-card-tile" data-target-tab="feesSchedule" data-admin-only="true">
+                <div class="card-icon-square">
+                  <img src="assets/icons/landmark.png" alt="Fees Schedule">
+                </div>
+                <div class="card-tile-info">
+                  <span class="card-tile-title">FEES & REQUIREMENTS</span>
+                  <span class="card-tile-desc">Class fees & supplies checklist</span>
                 </div>
               </div>
 
@@ -286,17 +314,19 @@
                   <table class="data-table">
                     <thead>
                       <tr>
+                        <th style="width:48px;">Photo</th>
                         <th>Student Name</th>
                         <th>Student ID</th>
                         <th>Class</th>
                         <th>Guardian</th>
                         <th>Phone</th>
+                        <th>Portal Password</th>
                         <th>Status</th>
                         <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody id="studentsTableBody">
-                      <tr><td colspan="7" class="text-center text-muted" style="padding:24px;">Loading student records...</td></tr>
+                      <tr><td colspan="9" class="text-center text-muted" style="padding:24px;">Loading student records...</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -320,20 +350,25 @@
               </div>
 
               <div class="content-box-body">
-                <div class="toolbar-row" style="background:#f8fafc; padding:12px 16px; border-radius:6px; border:1px solid #e2e8f0;">
-                  <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                <div class="toolbar-row" style="background:#f8fafc; padding:12px 16px; border-radius:6px; border:1px solid #e2e8f0; display:flex; flex-direction:column; gap:10px;">
+                  <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; width:100%;">
                     <div>
                       <label class="form-label" style="font-size:11px;">Class Level</label>
-                      <select id="gradesSelectClass" class="select-field" style="width:140px;"></select>
+                      <select id="gradesSelectClass" class="select-field" style="width:150px;"></select>
                     </div>
                     <div>
                       <label class="form-label" style="font-size:11px;">Subject</label>
-                      <select id="gradesSelectSubject" class="select-field" style="width:200px;"></select>
+                      <select id="gradesSelectSubject" class="select-field" style="width:230px;"></select>
                     </div>
                     <button type="button" id="btnLoadMarksheet" class="btn btn-secondary" style="margin-top:18px;">
-                      Load Marksheet
+                      Refresh Marksheet
+                    </button>
+                    <button type="button" id="btnSaveAllMarksheet" class="btn btn-primary" style="margin-top:18px; margin-left:auto;">
+                      <img src="assets/icons/save-all.png" class="sys-icon" alt="Save All">
+                      Save All Entered Grades
                     </button>
                   </div>
+                  <div id="marksheetHeaderInfo" style="font-size:13px; font-weight:700; color:#0284c7; padding-top:4px; border-top:1px solid #e2e8f0;"></div>
                 </div>
 
                 <div class="table-responsive">
@@ -354,6 +389,110 @@
                     </thead>
                     <tbody id="marksheetTableBody">
                       <tr><td colspan="10" class="text-center text-muted" style="padding:24px;">Click Load Marksheet to display students.</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ==========================================
+               TAB: CURRICULUM & SUBJECTS MANAGEMENT
+               ========================================== -->
+          <section id="tabSubjects" class="hidden">
+            <div class="content-box-card">
+              <div class="content-box-header">
+                <div style="display:flex; align-items:center; gap:12px;">
+                  <span class="content-box-title">
+                    <img src="assets/icons/folders.png" class="sys-icon" alt="Subjects">
+                    Curriculum & Subject Management
+                  </span>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm" onclick="LOLCA_APP.openAddSubjectModal()">
+                  <img src="assets/icons/square-dashed-plus.png" class="sys-icon" alt="Add">
+                  Add New Subject
+                </button>
+              </div>
+
+              <div class="content-box-body">
+                <div style="margin-bottom:16px; font-size:13px; color:#475569; line-height:1.5;">
+                  Manage subjects taught at Light of Life Christian Academy. Adding, editing, or deleting subjects instantly updates the Grade Entry Marksheet, Official Report Cards, and Teacher Assignment lists.
+                </div>
+
+                <!-- Preschool Curriculum Box -->
+                <div style="background:#f8fafc; border:1.5px solid #0284c7; border-radius:8px; padding:16px; margin-bottom:20px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+                    <div>
+                      <h3 style="font-size:15px; font-weight:800; color:#1e3a8a; margin:0;">
+                        PRE-SCHOOL CURRICULUM (Nursery, KI, KII)
+                      </h3>
+                      <span style="font-size:12px; color:#64748b;">Applied to all Preschool students on their Pre-Grade Report Card</span>
+                    </div>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="LOLCA_APP.openAddSubjectModal('preschool')">
+                      + Add Preschool Subject
+                    </button>
+                  </div>
+                  <div id="preschoolSubjectsContainer" class="curriculum-grid">
+                    <div class="text-muted">Loading preschool subjects...</div>
+                  </div>
+                </div>
+
+                <!-- Elementary Curriculum Box -->
+                <div style="background:#f8fafc; border:1.5px solid #16a34a; border-radius:8px; padding:16px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+                    <div>
+                      <h3 style="font-size:15px; font-weight:800; color:#166534; margin:0;">
+                        PRIMARY / ELEMENTARY CURRICULUM (1st Grade - 6th Grade)
+                      </h3>
+                      <span style="font-size:12px; color:#64748b;">Applied to all Elementary students on their Elementary Report Card</span>
+                    </div>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="LOLCA_APP.openAddSubjectModal('elementary')">
+                      + Add Primary Subject
+                    </button>
+                  </div>
+                  <div id="elementarySubjectsContainer" class="curriculum-grid">
+                    <div class="text-muted">Loading primary subjects...</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ==========================================
+               TAB: CLASS FEES SCHEDULE & REQUIREMENTS
+               ========================================== -->
+          <section id="tabFeesSchedule" class="hidden">
+            <div class="content-box-card">
+              <div class="content-box-header">
+                <span class="content-box-title">
+                  <img src="assets/icons/landmark.png" class="sys-icon" alt="Fees Schedule">
+                  Class Fees & Student Requirements Management
+                </span>
+                <span class="text-muted" style="font-size:12px;">
+                  Tied dynamically to enrolled students by class
+                </span>
+              </div>
+
+              <div class="content-box-body">
+                <div style="margin-bottom:16px; font-size:13px; color:#475569; line-height:1.5;">
+                  Configure tuition fees, additional fees (registration, ID card, activities), and mandatory supplies/requirements for each grade level. When a student is assigned to a class, these exact fees and requirements are automatically tied to them on their payment sheet and official receipt.
+                </div>
+
+                <div class="table-responsive">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Class Level</th>
+                        <th>Tuition Fee ($)</th>
+                        <th>Other Fees ($)</th>
+                        <th>Total Assessed ($)</th>
+                        <th>Academic Year</th>
+                        <th>Class Requirements & Materials</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="feesScheduleTableBody">
+                      <tr><td colspan="7" class="text-center text-muted" style="padding:24px;">Loading fee schedules...</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -464,9 +603,79 @@
           </section>
 
           <!-- ==========================================
-               TAB: SYSTEM SETTINGS (NO BACKEND URL IN UI)
+               TAB: SYSTEM SETTINGS (DOWNLOAD & SHARE)
                ========================================== -->
           <section id="tabSettings" class="hidden">
+            <!-- App Installation Card -->
+            <div class="install-card-banner">
+              <div>
+                <h3 style="margin:0 0 4px 0; font-size:17px; font-weight:800;">Download & Install LOLCA Web App</h3>
+                <p style="margin:0; font-size:12.5px; opacity:0.9;">
+                  Install this School Management System on your Windows PC, Android, Mac, or iOS home screen for instant, offline-ready workstation access.
+                </p>
+              </div>
+              <button type="button" id="btnInstallAppAdmin" class="btn btn-secondary" style="background:#ffffff; color:#1e3a8a; font-weight:800; border:none; padding:10px 18px;">
+                <img src="assets/icons/download (2).png" class="sys-icon" alt="Download">
+                Download App
+              </button>
+            </div>
+
+            <!-- Share Portal Links Card -->
+            <div class="content-box-card" style="margin-bottom:20px;">
+              <div class="content-box-header">
+                <span class="content-box-title">
+                  <img src="assets/icons/camera.png" class="sys-icon" alt="Share">
+                  Share Portal & Account Links
+                </span>
+              </div>
+              <div class="content-box-body">
+                <p style="font-size:13px; color:#475569; margin-bottom:14px;">
+                  Share direct portal links with teachers, parents, and students via WhatsApp, SMS, or copyable link:
+                </p>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                  <button type="button" class="btn btn-whatsapp" onclick="LOLCA_APP.shareLink('admin', 'whatsapp')">
+                    <img src="assets/images/WhatsApp Image 2026-07-13 at 11.54.49 AM.jpeg" style="width:16px; height:16px; border-radius:50%;" alt="WA">
+                    Share Staff Portal via WhatsApp
+                  </button>
+                  <button type="button" class="btn btn-sms" onclick="LOLCA_APP.shareLink('admin', 'sms')">
+                    <img src="assets/icons/mail-open.png" class="sys-icon" alt="SMS">
+                    Share Staff Portal via SMS
+                  </button>
+                  <button type="button" class="btn btn-secondary" onclick="LOLCA_APP.shareLink('admin', 'copy')">
+                    <img src="assets/icons/file-text.png" class="sys-icon" alt="Copy">
+                    Copy Staff Link
+                  </button>
+                  <button type="button" class="btn btn-secondary" onclick="LOLCA_APP.shareLink('student', 'copy')" style="margin-left:auto;">
+                    <img src="assets/icons/users.png" class="sys-icon" alt="Student">
+                    Copy Student Gateway Link
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Staff Profile & Photo Update -->
+            <div class="content-box-card" style="margin-bottom:20px;">
+              <div class="content-box-header">
+                <span class="content-box-title">
+                  <img src="assets/icons/user.png" class="sys-icon" alt="Profile">
+                  My Staff Profile & Photo
+                </span>
+              </div>
+              <div class="content-box-body">
+                <div class="photo-upload-group">
+                  <div class="photo-preview-box">
+                    <img src="assets/icons/circle-user-round.png" id="adminSelfPhotoPreview" alt="Profile Photo">
+                  </div>
+                  <div>
+                    <label class="form-label" style="margin-bottom:4px;">Upload / Update Profile Photo</label>
+                    <input type="file" id="inpAdminSelfPhotoFile" accept="image/*" class="input-field" style="padding:6px; font-size:12px;">
+                    <small class="text-muted">Image will appear globally in your sidebar, top navigation, and staff logs.</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- School Profile & Configurations -->
             <div class="content-box-card">
               <div class="content-box-header">
                 <span class="content-box-title">
@@ -579,6 +788,19 @@
       <form id="formAddStudent">
         <input type="hidden" id="editStudentOriginalId" value="">
         <div class="modal-body">
+          <!-- Student Photo Upload -->
+          <div class="photo-upload-group">
+            <div class="photo-preview-box">
+              <img src="assets/icons/circle-user-round.png" id="imgStudentPhotoPreview" alt="Student Preview">
+            </div>
+            <div>
+              <label class="form-label" style="margin-bottom:4px; font-weight:700;">Student Passport Photo</label>
+              <input type="file" id="inpStudentPhotoFile" accept="image/*" class="input-field" style="padding:6px; font-size:12px;">
+              <input type="hidden" id="inpStudentPhotoUrl" value="">
+              <small class="text-muted">Upload passport photo. Displayed globally across Registry, Report Cards, and Payment Receipts.</small>
+            </div>
+          </div>
+
           <div class="form-grid-2">
             <div class="form-group">
               <label class="form-label">Student ID (Leave blank to auto-generate)</label>
@@ -600,6 +822,11 @@
               </select>
             </div>
             <div class="form-group">
+              <label class="form-label">Student Portal Password *</label>
+              <input type="text" id="inpStudentPassword" class="input-field" required value="student123" placeholder="Password PIN for student login">
+              <small class="text-muted">Default: student123. Can be changed by student in their account settings.</small>
+            </div>
+            <div class="form-group">
               <label class="form-label">Date of Birth</label>
               <input type="date" id="inpStudentDob" class="input-field">
             </div>
@@ -615,17 +842,17 @@
               <label class="form-label">Guardian Email</label>
               <input type="email" id="inpGuardianEmail" class="input-field" placeholder="Email">
             </div>
+            <div class="form-group">
+              <label class="form-label">Status</label>
+              <select id="inpStudentStatus" class="select-field">
+                <option value="Active">Active</option>
+                <option value="Suspended">Suspended</option>
+              </select>
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">Residential Address</label>
             <input type="text" id="inpStudentAddress" class="input-field" placeholder="Address">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Status</label>
-            <select id="inpStudentStatus" class="select-field">
-              <option value="Active">Active</option>
-              <option value="Suspended">Suspended</option>
-            </select>
           </div>
         </div>
         <div class="modal-footer">
@@ -646,6 +873,19 @@
       <form id="formAddAdmin">
         <input type="hidden" id="editAdminOriginalId" value="">
         <div class="modal-body">
+          <!-- Admin Photo Upload -->
+          <div class="photo-upload-group">
+            <div class="photo-preview-box">
+              <img src="assets/icons/circle-user-round.png" id="imgAdminPhotoPreview" alt="Staff Preview">
+            </div>
+            <div>
+              <label class="form-label" style="margin-bottom:4px; font-weight:700;">Staff / Teacher Photo</label>
+              <input type="file" id="inpAdminPhotoFile" accept="image/*" class="input-field" style="padding:6px; font-size:12px;">
+              <input type="hidden" id="inpAdminPhotoUrl" value="">
+              <small class="text-muted">Staff portrait photo for user card and workstation.</small>
+            </div>
+          </div>
+
           <div class="form-grid-2">
             <div class="form-group">
               <label class="form-label">Staff Email *</label>
@@ -700,6 +940,121 @@
           <button type="submit" class="btn btn-primary">Save Staff User</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal: Add / Edit Subject -->
+  <div id="modalAddSubject" class="modal-overlay hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="modalAddSubjectTitle">Add New Subject</h3>
+        <button type="button" class="modal-close-btn" data-close-modal="modalAddSubject">&times;</button>
+      </div>
+      <form id="formAddSubject">
+        <input type="hidden" id="editSubjectOldName" value="">
+        <input type="hidden" id="editSubjectOldCategory" value="">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Curriculum Level *</label>
+            <select id="selSubjectLevel" class="select-field" required>
+              <option value="preschool">Preschool (Nursery, KI, KII)</option>
+              <option value="elementary">Primary / Elementary (1st - 6th Grade)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Department / Category Name *</label>
+            <input type="text" id="inpSubjectCategory" class="input-field" required placeholder="e.g. LITERACY, NUMERACY, ENGLISH LANGUAGE, MATHEMATICS, SCIENCE, SOCIAL STUDIES">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Subject Title *</label>
+            <input type="text" id="inpSubjectName" class="input-field" required placeholder="e.g. Reading, French, Bible Knowledge">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal="modalAddSubject">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Subject</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Edit Class Fee & Requirements -->
+  <div id="modalEditClassFee" class="modal-overlay hidden">
+    <div class="modal-dialog modal-dialog-lg">
+      <div class="modal-header">
+        <h3 id="modalEditClassFeeTitle">Edit Class Fee & Requirements</h3>
+        <button type="button" class="modal-close-btn" data-close-modal="modalEditClassFee">&times;</button>
+      </div>
+      <form id="formEditClassFee">
+        <div class="modal-body">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Class Level</label>
+              <input type="text" id="inpFeeClassName" class="input-field" readonly style="font-weight:700; color:#1e3a8a; background:#f1f5f9;">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Academic Year</label>
+              <input type="text" id="inpFeeYear" class="input-field" value="2025-2026" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tuition Fee ($ USD) *</label>
+              <input type="number" id="inpFeeTuition" class="input-field" min="0" step="any" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Other Fees (Registration/ID/PTA) ($ USD) *</label>
+              <input type="number" id="inpFeeOther" class="input-field" min="0" step="any" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Total Assessed Fees ($ USD)</label>
+            <input type="number" id="inpFeeTotal" class="input-field" readonly style="font-weight:800; color:#0284c7; background:#f1f5f9;">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mandatory Supplies, Uniform & Class Requirements</label>
+            <textarea id="inpFeeRequirements" class="input-field" rows="3" placeholder="e.g. Uniform (Navy blue & white), 8 Notebooks, Oxford English/Math textbooks, Geometry Set, PE Uniform"></textarea>
+            <small class="text-muted">These requirements are automatically tied to students enrolled in this class and appear on their official payment receipt.</small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal="modalEditClassFee">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Fees & Requirements</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Share Link -->
+  <div id="modalShareApp" class="modal-overlay hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="modalShareAppTitle">Share Portal Link</h3>
+        <button type="button" class="modal-close-btn" data-close-modal="modalShareApp">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="shareAppPrompt" style="font-size:13px; color:#475569; margin-bottom:14px;">
+          Share this direct portal link via WhatsApp, SMS, or copy to clipboard:
+        </p>
+        <div class="form-group">
+          <label class="form-label">Direct URL</label>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="inpShareUrl" class="input-field" readonly style="font-family:monospace; font-size:12px;">
+            <button type="button" id="btnCopyShareUrl" class="btn btn-secondary btn-sm" onclick="LOLCA_APP.copyShareUrl()">Copy</button>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:10px; margin-top:16px;">
+          <a id="btnShareWhatsAppLink" target="_blank" class="btn btn-whatsapp" style="text-align:center; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:8px; padding:10px;">
+            <img src="assets/images/WhatsApp Image 2026-07-13 at 11.54.49 AM.jpeg" style="width:18px; height:18px; border-radius:50%;" alt="WA">
+            Share via WhatsApp
+          </a>
+          <a id="btnShareSmsLink" class="btn btn-sms" style="text-align:center; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:8px; padding:10px;">
+            <img src="assets/icons/mail-open.png" class="sys-icon" alt="SMS">
+            Share via SMS (Mobile Text)
+          </a>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-close-modal="modalShareApp">Close</button>
+      </div>
     </div>
   </div>
 

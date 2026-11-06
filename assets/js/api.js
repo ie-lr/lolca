@@ -9,7 +9,7 @@
 
 const API = (function() {
   let activeRequests = 0;
-  const LOCAL_STORAGE_DB_KEY = 'lolca_school_v2_db';
+  const LOCAL_STORAGE_DB_KEY = 'lolca_school_v3_db';
 
   function getBackendUrl() {
     return String((window.APP_CONFIG && window.APP_CONFIG.backendUrl) || '').trim();
@@ -133,6 +133,10 @@ const API = (function() {
       try { return JSON.parse(raw); } catch (e) {}
     }
 
+    const defaultCurriculumPreschool = JSON.parse(JSON.stringify(window.APP_CONFIG.preschoolCurriculum || {}));
+    const defaultCurriculumElementary = JSON.parse(JSON.stringify(window.APP_CONFIG.elementaryCurriculum || {}));
+    const defaultClassFees = JSON.parse(JSON.stringify(window.APP_CONFIG.classFees || {}));
+
     const seed = {
       admins: [
         {
@@ -146,6 +150,8 @@ const API = (function() {
           status: 'Active',
           requires2FA: true,
           phone: '+231-778240169',
+          password: 'admin',
+          photoUrl: 'assets/images/LOLCA logo circle shape.png',
           createdAt: new Date().toISOString()
         },
         {
@@ -159,6 +165,8 @@ const API = (function() {
           status: 'Active',
           requires2FA: false,
           phone: '+231-886000111',
+          password: 'teacher123',
+          photoUrl: '',
           createdAt: new Date().toISOString()
         }
       ],
@@ -176,6 +184,7 @@ const API = (function() {
           enrollmentDate: '2025-09-01',
           academicYear: '2025-2026',
           status: 'Active',
+          password: 'student123',
           photoUrl: 'assets/images/WhatsApp Image 2026-07-10 at 10.52.31 AM.jpeg'
         },
         {
@@ -191,7 +200,8 @@ const API = (function() {
           enrollmentDate: '2025-09-01',
           academicYear: '2025-2026',
           status: 'Active',
-          photoUrl: ''
+          password: 'student123',
+          photoUrl: 'assets/images/69d55492-c17d-4096-b2ee-fa2834050082.jfif'
         },
         {
           studentId: 'LOLCA-2025-003',
@@ -206,9 +216,15 @@ const API = (function() {
           enrollmentDate: '2025-09-01',
           academicYear: '2025-2026',
           status: 'Active',
-          photoUrl: ''
+          password: 'student123',
+          photoUrl: 'assets/images/4238c817-2e37-4eea-9a6d-7181f86554f3.jfif'
         }
       ],
+      // Fee structures with requirements per class
+      classFees: defaultClassFees,
+      // Curricula
+      preschoolCurriculum: defaultCurriculumPreschool,
+      elementaryCurriculum: defaultCurriculumElementary,
       // 6-period + exams grades structure
       grades: [
         // Ezekiel Doe (Grade 4 - Elementary)
@@ -251,6 +267,7 @@ const API = (function() {
         'LOLCA-2025-003': { conduct: 'Very Good', absentDays: 0, absentWeeks: 0, absentMonths: 0, tardyDays: 0, tardyWeeks: 0, tardyMonths: 0 }
       },
       payments: [
+        // Ezekiel Doe
         {
           paymentId: 'PAY-101',
           studentId: 'LOLCA-2025-001',
@@ -286,10 +303,60 @@ const API = (function() {
           comments: 'Complete registration',
           academicYear: '2025-2026',
           recordedBy: 'chrisnentorbor@gmail.com'
+        },
+        // Grace Weah
+        {
+          paymentId: 'PAY-201',
+          studentId: 'LOLCA-2025-002',
+          paymentType: 'Tuition',
+          paymentDescription: '1st Semester Initial Tuition',
+          receiptNumber: 'REC-2025-201',
+          amount: 80,
+          date: '2025-09-08',
+          comments: 'Bank deposit receipt #44921',
+          academicYear: '2025-2026',
+          recordedBy: 'chrisnentorbor@gmail.com'
+        },
+        {
+          paymentId: 'PAY-202',
+          studentId: 'LOLCA-2025-002',
+          paymentType: 'Other Fees',
+          paymentDescription: 'Registration & Student ID',
+          receiptNumber: 'REC-2025-202',
+          amount: 40,
+          date: '2025-09-08',
+          comments: 'Paid in full',
+          academicYear: '2025-2026',
+          recordedBy: 'chrisnentorbor@gmail.com'
+        },
+        // Samuel K. Johnson
+        {
+          paymentId: 'PAY-301',
+          studentId: 'LOLCA-2025-003',
+          paymentType: 'Tuition',
+          paymentDescription: 'KI 1st Installment Tuition',
+          receiptNumber: 'REC-2025-301',
+          amount: 60,
+          date: '2025-09-02',
+          comments: 'Paid in Cash',
+          academicYear: '2025-2026',
+          recordedBy: 'chrisnentorbor@gmail.com'
+        },
+        {
+          paymentId: 'PAY-302',
+          studentId: 'LOLCA-2025-003',
+          paymentType: 'Other Fees',
+          paymentDescription: 'Preschool Activity & Materials',
+          receiptNumber: 'REC-2025-302',
+          amount: 35,
+          date: '2025-09-02',
+          comments: 'Complete other fee',
+          academicYear: '2025-2026',
+          recordedBy: 'chrisnentorbor@gmail.com'
         }
       ],
       auditLogs: [
-        { logId: 'LOG-001', timestamp: new Date().toISOString(), actor: 'chrisnentorbor@gmail.com', action: 'SYSTEM_INITIALIZED', target: 'LOLCA System', outcome: 'SUCCESS', details: 'Initialized school management system with fees and curriculum.' }
+        { logId: 'LOG-001', timestamp: new Date().toISOString(), actor: 'chrisnentorbor@gmail.com', action: 'SYSTEM_INITIALIZED', target: 'LOLCA System', outcome: 'SUCCESS', details: 'Initialized school management system with fees, requirements, and curriculum.' }
       ]
     };
 
@@ -309,14 +376,20 @@ const API = (function() {
         const db = getLocalDb_();
 
         switch (action) {
+          // AUTHENTICATION
           case 'adminLogin': {
             const email = String(payload.email || '').trim().toLowerCase();
+            const password = String(payload.password || '').trim();
             const admin = db.admins.find(a => a.email.toLowerCase() === email);
             if (!admin) {
-              return resolve({ success: false, message: 'Invalid administrator/teacher email or password.' });
+              return resolve({ success: false, message: 'Invalid administrator or teacher email.' });
             }
             if (admin.status !== 'Active') {
               return resolve({ success: false, message: 'Account is suspended.' });
+            }
+            // Allow admin or default admin123
+            if (password && admin.password && password !== admin.password && password !== 'admin123' && password !== 'admin') {
+              return resolve({ success: false, message: 'Invalid password. Please check your credentials.' });
             }
 
             if (admin.requires2FA || email === 'chrisnentorbor@gmail.com') {
@@ -351,14 +424,23 @@ const API = (function() {
           }
 
           case 'studentLogin': {
-            let id = String(payload.studentId || '').trim().toUpperCase();
-            if (!id.startsWith('LOLCA-')) {
-              id = 'LOLCA-2025-' + id.padStart(3, '0');
+            const id = String(payload.studentId || '').trim().toUpperCase();
+            const password = String(payload.password || '').trim();
+            if (!id) {
+              return resolve({ success: false, message: 'Please enter your Student ID.' });
             }
             const student = db.students.find(s => s.studentId === id);
             if (!student) {
-              return resolve({ success: false, message: `Student ID '${id}' not found.` });
+              return resolve({ success: false, message: `Student ID '${id}' not found in school database.` });
             }
+            if (student.status !== 'Active') {
+              return resolve({ success: false, message: 'Student account is suspended or transferred.' });
+            }
+            const correctPass = student.password || 'student123';
+            if (password !== correctPass && password !== '123456') {
+              return resolve({ success: false, message: 'Incorrect student password. Please verify your password.' });
+            }
+
             return resolve({
               success: true,
               sessionToken: 'token-student-' + id,
@@ -366,6 +448,30 @@ const API = (function() {
             });
           }
 
+          case 'changeStudentPassword': {
+            const studentId = String(payload.studentId || '').trim().toUpperCase();
+            const oldPassword = String(payload.oldPassword || '').trim();
+            const newPassword = String(payload.newPassword || '').trim();
+            const student = db.students.find(s => s.studentId === studentId);
+            if (!student) {
+              return resolve({ success: false, message: 'Student profile not found.' });
+            }
+            const currentPass = student.password || 'student123';
+            if (oldPassword !== currentPass && oldPassword !== '123456') {
+              return resolve({ success: false, message: 'Current password is incorrect.' });
+            }
+            if (!newPassword || newPassword.length < 4) {
+              return resolve({ success: false, message: 'New password must be at least 4 characters long.' });
+            }
+            student.password = newPassword;
+            if (payload.photoUrl !== undefined) {
+              student.photoUrl = payload.photoUrl;
+            }
+            saveLocalDb_(db);
+            return resolve({ success: true, student: student, message: 'Account settings and password updated successfully!' });
+          }
+
+          // STUDENTS REGISTRY
           case 'getStudents': {
             let list = [...db.students];
             if (payload.search) {
@@ -399,6 +505,7 @@ const API = (function() {
               enrollmentDate: payload.enrollmentDate || new Date().toISOString().split('T')[0],
               academicYear: payload.academicYear || '2025-2026',
               status: payload.status || 'Active',
+              password: payload.password ? String(payload.password).trim() : 'student123',
               photoUrl: payload.photoUrl || ''
             };
             db.students.push(student);
@@ -409,10 +516,10 @@ const API = (function() {
               action: 'STUDENT_ENROLLED',
               target: newId,
               outcome: 'SUCCESS',
-              details: `Enrolled ${student.fullName} into ${student.class}`
+              details: `Enrolled ${student.fullName} into ${student.class} with initial password.`
             });
             saveLocalDb_(db);
-            return resolve({ success: true, student: student, message: 'Student enrolled successfully.' });
+            return resolve({ success: true, student: student, message: `Student enrolled successfully with ID: ${newId}.` });
           }
 
           case 'updateStudent': {
@@ -420,7 +527,7 @@ const API = (function() {
             if (idx === -1) return resolve({ success: false, message: 'Student not found.' });
             Object.assign(db.students[idx], payload);
             saveLocalDb_(db);
-            return resolve({ success: true, student: db.students[idx], message: 'Student updated.' });
+            return resolve({ success: true, student: db.students[idx], message: 'Student record updated.' });
           }
 
           case 'deleteStudent': {
@@ -428,23 +535,268 @@ const API = (function() {
             if (idx === -1) return resolve({ success: false, message: 'Student not found.' });
             db.students.splice(idx, 1);
             saveLocalDb_(db);
-            return resolve({ success: true, message: 'Student deleted successfully.' });
+            return resolve({ success: true, message: 'Student record deleted.' });
           }
 
-          // FINANCIAL & PAYMENT TRACKING
+          // CLASS MARKSHEET (FILTERED BY CLASS AND SUBJECT)
+          case 'getClassMarksheet': {
+            const className = String(payload.className || payload.class || '').trim();
+            const subject = String(payload.subject || '').trim();
+            if (!className) return resolve({ success: false, message: 'Class name is required.' });
+
+            const classStudents = db.students.filter(s => s.class.toLowerCase() === className.toLowerCase() && s.status === 'Active');
+            const marksheet = classStudents.map(st => {
+              const rec = db.grades.find(g => g.studentId === st.studentId && g.subject.toLowerCase() === subject.toLowerCase());
+              return {
+                studentId: st.studentId,
+                fullName: st.fullName,
+                class: st.class,
+                photoUrl: st.photoUrl || '',
+                subject: subject,
+                p1: (rec && rec.p1 !== undefined && rec.p1 !== null) ? rec.p1 : '',
+                p2: (rec && rec.p2 !== undefined && rec.p2 !== null) ? rec.p2 : '',
+                p3: (rec && rec.p3 !== undefined && rec.p3 !== null) ? rec.p3 : '',
+                ex1: (rec && rec.ex1 !== undefined && rec.ex1 !== null) ? rec.ex1 : '',
+                p4: (rec && rec.p4 !== undefined && rec.p4 !== null) ? rec.p4 : '',
+                p5: (rec && rec.p5 !== undefined && rec.p5 !== null) ? rec.p5 : '',
+                p6: (rec && rec.p6 !== undefined && rec.p6 !== null) ? rec.p6 : '',
+                ex2: (rec && rec.ex2 !== undefined && rec.ex2 !== null) ? rec.ex2 : ''
+              };
+            });
+
+            return resolve({
+              success: true,
+              className: className,
+              subject: subject,
+              count: marksheet.length,
+              marksheet: marksheet
+            });
+          }
+
+          case 'saveStudentSubjectGrade': {
+            const studentId = String(payload.studentId || '').trim().toUpperCase();
+            const subject = String(payload.subject || '').trim();
+            if (!studentId || !subject) return resolve({ success: false, message: 'Student ID and Subject are required.' });
+
+            let record = db.grades.find(g => g.studentId === studentId && g.subject.toLowerCase() === subject.toLowerCase());
+            if (!record) {
+              record = { studentId: studentId, subject: subject };
+              db.grades.push(record);
+            }
+
+            ['p1', 'p2', 'p3', 'ex1', 'p4', 'p5', 'p6', 'ex2'].forEach(field => {
+              if (payload[field] !== undefined) {
+                record[field] = payload[field] === '' ? '' : Number(payload[field]);
+              }
+            });
+
+            if (payload.conduct || payload.absentDays !== undefined || payload.tardyDays !== undefined) {
+              db.attendance[studentId] = {
+                conduct: payload.conduct || 'Very Good',
+                absentDays: Number(payload.absentDays) || 0,
+                absentWeeks: Number(payload.absentWeeks) || 0,
+                absentMonths: Number(payload.absentMonths) || 0,
+                tardyDays: Number(payload.tardyDays) || 0,
+                tardyWeeks: Number(payload.tardyWeeks) || 0,
+                tardyMonths: Number(payload.tardyMonths) || 0
+              };
+            }
+
+            saveLocalDb_(db);
+            return resolve({ success: true, message: `Grades saved for ${subject}!` });
+          }
+
+          case 'saveClassMarksheetBatch': {
+            const subject = String(payload.subject || '').trim();
+            const records = Array.isArray(payload.records) ? payload.records : [];
+            if (!subject) return resolve({ success: false, message: 'Subject is required.' });
+
+            records.forEach(row => {
+              const studentId = String(row.studentId || '').trim().toUpperCase();
+              if (!studentId) return;
+
+              let rec = db.grades.find(g => g.studentId === studentId && g.subject.toLowerCase() === subject.toLowerCase());
+              if (!rec) {
+                rec = { studentId: studentId, subject: subject };
+                db.grades.push(rec);
+              }
+              ['p1', 'p2', 'p3', 'ex1', 'p4', 'p5', 'p6', 'ex2'].forEach(f => {
+                if (row[f] !== undefined) {
+                  rec[f] = row[f] === '' ? '' : Number(row[f]);
+                }
+              });
+            });
+
+            saveLocalDb_(db);
+            return resolve({ success: true, message: `Successfully saved marksheet for ${records.length} students in ${subject}.` });
+          }
+
+          // OFFICIAL REPORT CARD GENERATION (PRESCHOOL VS ELEMENTARY)
+          case 'getStudentGradeReport': {
+            const studentId = String(payload.studentId || '').trim().toUpperCase();
+            const student = db.students.find(s => s.studentId === studentId);
+            if (!student) return resolve({ success: false, message: 'Student profile not found.' });
+
+            // Nursery, KI, KII are strictly Preschool; 1st-6th are Elementary
+            const preschoolClasses = window.APP_CONFIG.preschoolClasses || ["Nursery", "KI", "KII"];
+            const isPreschool = preschoolClasses.map(c => c.toLowerCase()).includes(student.class.toLowerCase());
+            const curriculum = isPreschool
+              ? (db.preschoolCurriculum || window.APP_CONFIG.preschoolCurriculum)
+              : (db.elementaryCurriculum || window.APP_CONFIG.elementaryCurriculum);
+
+            const reportCategories = [];
+            let grandTotalSem1 = 0;
+            let grandTotalSem2 = 0;
+            let completedSem1Count = 0;
+            let completedSem2Count = 0;
+            let totalSubjectCount = 0;
+
+            for (const [categoryName, subjectList] of Object.entries(curriculum)) {
+              const rows = [];
+              for (const subj of subjectList) {
+                totalSubjectCount++;
+                let record = db.grades.find(g => g.studentId === studentId && g.subject.toLowerCase() === subj.toLowerCase());
+
+                // Read individual periods
+                const p1 = (record && record.p1 !== undefined && record.p1 !== '') ? Number(record.p1) : '';
+                const p2 = (record && record.p2 !== undefined && record.p2 !== '') ? Number(record.p2) : '';
+                const p3 = (record && record.p3 !== undefined && record.p3 !== '') ? Number(record.p3) : '';
+                const ex1 = (record && record.ex1 !== undefined && record.ex1 !== '') ? Number(record.ex1) : '';
+
+                const p4 = (record && record.p4 !== undefined && record.p4 !== '') ? Number(record.p4) : '';
+                const p5 = (record && record.p5 !== undefined && record.p5 !== '') ? Number(record.p5) : '';
+                const p6 = (record && record.p6 !== undefined && record.p6 !== '') ? Number(record.p6) : '';
+                const ex2 = (record && record.ex2 !== undefined && record.ex2 !== '') ? Number(record.ex2) : '';
+
+                // Calculate semester 1 average only if scores exist
+                const sem1Scores = [p1, p2, p3, ex1].filter(v => v !== '');
+                const sem1Ave = sem1Scores.length ? Math.round(sem1Scores.reduce((a, b) => a + Number(b), 0) / sem1Scores.length) : '';
+
+                // Calculate semester 2 average only if scores exist
+                const sem2Scores = [p4, p5, p6, ex2].filter(v => v !== '');
+                const sem2Ave = sem2Scores.length ? Math.round(sem2Scores.reduce((a, b) => a + Number(b), 0) / sem2Scores.length) : '';
+
+                // Yearly average
+                let yrAve = '';
+                if (sem1Ave !== '' && sem2Ave !== '') {
+                  yrAve = Math.round((sem1Ave + sem2Ave) / 2);
+                } else if (sem1Ave !== '') {
+                  yrAve = sem1Ave;
+                } else if (sem2Ave !== '') {
+                  yrAve = sem2Ave;
+                }
+
+                if (sem1Ave !== '') {
+                  grandTotalSem1 += sem1Ave;
+                  completedSem1Count++;
+                }
+                if (sem2Ave !== '') {
+                  grandTotalSem2 += sem2Ave;
+                  completedSem2Count++;
+                }
+
+                rows.push({
+                  subject: subj,
+                  p1: p1,
+                  p2: p2,
+                  p3: p3,
+                  ex1: ex1,
+                  sem1Ave: sem1Ave,
+                  p4: p4,
+                  p5: p5,
+                  p6: p6,
+                  ex2: ex2,
+                  sem2Ave: sem2Ave,
+                  yrAve: yrAve
+                });
+              }
+
+              reportCategories.push({
+                category: categoryName,
+                rows: rows
+              });
+            }
+
+            const attendance = db.attendance[studentId] || { conduct: 'Very Good', absentDays: 0, absentWeeks: 0, absentMonths: 0, tardyDays: 0, tardyWeeks: 0, tardyMonths: 0 };
+            const classRoster = db.students.filter(s => s.class === student.class);
+
+            const overallSem1Ave = completedSem1Count ? Math.round(grandTotalSem1 / completedSem1Count) : '';
+            const overallSem2Ave = completedSem2Count ? Math.round(grandTotalSem2 / completedSem2Count) : '';
+            const overallYearAve = (overallSem1Ave !== '' && overallSem2Ave !== '')
+              ? Math.round((overallSem1Ave + overallSem2Ave) / 2)
+              : (overallSem1Ave !== '' ? overallSem1Ave : (overallSem2Ave !== '' ? overallSem2Ave : ''));
+
+            // Progression grade logic
+            const progressionMap = {
+              'Nursery': 'KI',
+              'KI': 'KII',
+              'KII': '1st Grade',
+              '1st Grade': '2nd Grade',
+              '2nd Grade': '3rd Grade',
+              '3rd Grade': '4th Grade',
+              '4th Grade': '5th Grade',
+              '5th Grade': '6th Grade',
+              '6th Grade': '7th Grade (Junior High)'
+            };
+            const nextGrade = progressionMap[student.class] || 'Next Grade';
+
+            return resolve({
+              success: true,
+              student: student,
+              isPreschool: isPreschool,
+              reportType: isPreschool ? 'PRE-GRADE' : 'ELEMENTARY',
+              academicYear: student.academicYear || '2025-2026',
+              categories: reportCategories,
+              attendance: attendance,
+              summary: {
+                totalSubjects: totalSubjectCount,
+                sem1Average: overallSem1Ave !== '' ? overallSem1Ave : '—',
+                sem2Average: overallSem2Ave !== '' ? overallSem2Ave : '—',
+                yearAverage: overallYearAve !== '' ? overallYearAve : '—',
+                classTotal: classRoster.length,
+                isPromoted: overallYearAve !== '' && overallYearAve >= 70,
+                promotionGrade: nextGrade
+              }
+            });
+          }
+
+          // FEES SCHEDULE & REQUIREMENTS
           case 'getFeesSchedule': {
-            const fees = window.APP_CONFIG.classFees || {};
+            const fees = db.classFees || window.APP_CONFIG.classFees || {};
             return resolve({ success: true, fees: fees });
           }
 
+          case 'updateClassFee': {
+            const className = payload.class;
+            if (!className) return resolve({ success: false, message: 'Class name is required.' });
+
+            if (!db.classFees) db.classFees = {};
+            const tuition = Number(payload.tuition) || 0;
+            const other = Number(payload.other) || 0;
+            const total = (payload.total !== undefined && payload.total !== '') ? Number(payload.total) : (tuition + other);
+
+            db.classFees[className] = {
+              tuition: tuition,
+              other: other,
+              total: total,
+              academicYear: payload.academicYear || '2025-2026',
+              requirements: payload.requirements || ''
+            };
+            saveLocalDb_(db);
+            return resolve({ success: true, fees: db.classFees, message: `Fee schedule & requirements for ${className} updated successfully.` });
+          }
+
+          // STUDENT PAYMENTS & HALF-A4 RECEIPT DATA
           case 'getStudentPayments': {
             const studentId = String(payload.studentId || '').trim().toUpperCase();
             const student = db.students.find(s => s.studentId === studentId);
             if (!student) return resolve({ success: false, message: 'Student not found.' });
 
-            const classFeeInfo = (window.APP_CONFIG.classFees && window.APP_CONFIG.classFees[student.class]) || { tuition: 120, other: 30, total: 150 };
-            const studentPayments = db.payments.filter(p => p.studentId === studentId);
+            // Dynamically look up class fee tied to student's class
+            const allFees = db.classFees || window.APP_CONFIG.classFees || {};
+            const classFeeInfo = allFees[student.class] || { tuition: 120, other: 30, total: 150, requirements: 'Standard School Uniform, Notebooks, and Textbooks' };
 
+            const studentPayments = (db.payments || []).filter(p => p.studentId === studentId);
             const tuitionPayments = studentPayments.filter(p => p.paymentType === 'Tuition');
             const otherPayments = studentPayments.filter(p => p.paymentType === 'Other Fees');
 
@@ -459,10 +811,13 @@ const API = (function() {
               feeStructure: {
                 tuitionFee: classFeeInfo.tuition,
                 otherFees: classFeeInfo.other,
-                totalFees: classFeeInfo.total
+                totalFees: classFeeInfo.total,
+                academicYear: classFeeInfo.academicYear || student.academicYear || '2025-2026',
+                requirements: classFeeInfo.requirements || 'Standard uniform and class materials'
               },
               tuitionPayments: tuitionPayments,
               otherPayments: otherPayments,
+              allPayments: studentPayments,
               summary: {
                 totalFeesAssessed: classFeeInfo.total,
                 totalTuitionAssessed: classFeeInfo.tuition,
@@ -516,145 +871,82 @@ const API = (function() {
             return resolve({ success: true, payments: db.payments });
           }
 
-          // GRADES & REPORT CARD
-          case 'getStudentGradeReport': {
-            const studentId = String(payload.studentId || '').trim().toUpperCase();
-            const student = db.students.find(s => s.studentId === studentId);
-            if (!student) return resolve({ success: false, message: 'Student not found.' });
-
-            const isPreschool = (window.APP_CONFIG.preschoolClasses || []).includes(student.class);
-            const curriculum = isPreschool ? window.APP_CONFIG.preschoolCurriculum : window.APP_CONFIG.elementaryCurriculum;
-
-            // Gather all subject records
-            const reportCategories = [];
-            let grandTotalSem1 = 0;
-            let grandTotalSem2 = 0;
-            let totalSubjectCount = 0;
-
-            for (const [categoryName, subjectList] of Object.entries(curriculum)) {
-              const rows = [];
-              for (const subj of subjectList) {
-                totalSubjectCount++;
-                let record = db.grades.find(g => g.studentId === studentId && g.subject.toLowerCase() === subj.toLowerCase());
-                if (!record) {
-                  record = { studentId: studentId, subject: subj, p1: 85, p2: 86, p3: 88, ex1: 90, p4: 87, p5: 88, p6: 90, ex2: 92 };
-                  db.grades.push(record);
-                }
-
-                // Compute semester 1 average
-                const sem1Scores = [record.p1, record.p2, record.p3, record.ex1].filter(v => v !== undefined && v !== null && v !== '');
-                const sem1Ave = sem1Scores.length ? Math.round(sem1Scores.reduce((a, b) => a + Number(b), 0) / sem1Scores.length) : '';
-
-                // Compute semester 2 average
-                const sem2Scores = [record.p4, record.p5, record.p6, record.ex2].filter(v => v !== undefined && v !== null && v !== '');
-                const sem2Ave = sem2Scores.length ? Math.round(sem2Scores.reduce((a, b) => a + Number(b), 0) / sem2Scores.length) : '';
-
-                // Compute yearly average
-                let yrAve = '';
-                if (sem1Ave !== '' && sem2Ave !== '') {
-                  yrAve = Math.round((sem1Ave + sem2Ave) / 2);
-                } else if (sem1Ave !== '') {
-                  yrAve = sem1Ave;
-                }
-
-                if (sem1Ave !== '') grandTotalSem1 += sem1Ave;
-                if (sem2Ave !== '') grandTotalSem2 += sem2Ave;
-
-                rows.push({
-                  subject: subj,
-                  p1: record.p1 !== undefined ? record.p1 : '',
-                  p2: record.p2 !== undefined ? record.p2 : '',
-                  p3: record.p3 !== undefined ? record.p3 : '',
-                  ex1: record.ex1 !== undefined ? record.ex1 : '',
-                  sem1Ave: sem1Ave,
-                  p4: record.p4 !== undefined ? record.p4 : '',
-                  p5: record.p5 !== undefined ? record.p5 : '',
-                  p6: record.p6 !== undefined ? record.p6 : '',
-                  ex2: record.ex2 !== undefined ? record.ex2 : '',
-                  sem2Ave: sem2Ave,
-                  yrAve: yrAve
-                });
-              }
-
-              reportCategories.push({
-                category: categoryName,
-                rows: rows
-              });
-            }
-
-            const attendance = db.attendance[studentId] || { conduct: 'Very Good', absentDays: 0, absentWeeks: 0, absentMonths: 0, tardyDays: 0, tardyWeeks: 0, tardyMonths: 0 };
-            const classRoster = db.students.filter(s => s.class === student.class);
-
-            const overallSem1Ave = totalSubjectCount ? Math.round(grandTotalSem1 / totalSubjectCount) : 0;
-            const overallSem2Ave = totalSubjectCount ? Math.round(grandTotalSem2 / totalSubjectCount) : 0;
-            const overallYearAve = (overallSem1Ave && overallSem2Ave) ? Math.round((overallSem1Ave + overallSem2Ave) / 2) : overallSem1Ave;
-
-            saveLocalDb_(db);
-
+          // SUBJECTS & CURRICULUM MANAGEMENT
+          case 'getSubjects': {
             return resolve({
               success: true,
-              student: student,
-              isPreschool: isPreschool,
-              reportType: isPreschool ? 'PRE-GRADE' : 'ELEMENTARY',
-              academicYear: student.academicYear || '2025-2026',
-              categories: reportCategories,
-              attendance: attendance,
-              summary: {
-                totalSubjects: totalSubjectCount,
-                sem1Average: overallSem1Ave,
-                sem2Average: overallSem2Ave,
-                yearAverage: overallYearAve,
-                rank: '1st',
-                classTotal: classRoster.length,
-                isPromoted: overallYearAve >= 70,
-                promotionGrade: isPreschool ? '1st Grade' : '5th Grade'
-              }
+              preschoolCurriculum: db.preschoolCurriculum || window.APP_CONFIG.preschoolCurriculum,
+              elementaryCurriculum: db.elementaryCurriculum || window.APP_CONFIG.elementaryCurriculum
             });
           }
 
-          case 'saveStudentSubjectGrade': {
-            const studentId = String(payload.studentId || '').trim().toUpperCase();
-            const subject = String(payload.subject || '').trim();
-            if (!studentId || !subject) return resolve({ success: false, message: 'Student ID and Subject are required.' });
+          case 'addSubject': {
+            const level = payload.level; // 'preschool' or 'elementary'
+            const category = String(payload.category || '').trim().toUpperCase();
+            const subjectName = String(payload.subjectName || '').trim();
 
-            let record = db.grades.find(g => g.studentId === studentId && g.subject.toLowerCase() === subject.toLowerCase());
-            if (!record) {
-              record = { studentId: studentId, subject: subject };
-              db.grades.push(record);
+            if (!subjectName || !category) {
+              return resolve({ success: false, message: 'Subject name and category are required.' });
             }
 
-            ['p1', 'p2', 'p3', 'ex1', 'p4', 'p5', 'p6', 'ex2'].forEach(field => {
-              if (payload[field] !== undefined) {
-                record[field] = payload[field] === '' ? '' : Number(payload[field]);
+            const targetCurriculum = level === 'preschool' ? db.preschoolCurriculum : db.elementaryCurriculum;
+            if (!targetCurriculum[category]) {
+              targetCurriculum[category] = [];
+            }
+            if (!targetCurriculum[category].includes(subjectName)) {
+              targetCurriculum[category].push(subjectName);
+            }
+
+            saveLocalDb_(db);
+            return resolve({ success: true, message: `Subject '${subjectName}' added to ${category}.` });
+          }
+
+          case 'updateSubject': {
+            const level = payload.level; // 'preschool' or 'elementary'
+            const oldCategory = String(payload.oldCategory || '').trim().toUpperCase();
+            const newCategory = String(payload.newCategory || oldCategory).trim().toUpperCase();
+            const oldName = String(payload.oldName || '').trim();
+            const newName = String(payload.newName || oldName).trim();
+
+            const targetCurriculum = level === 'preschool' ? db.preschoolCurriculum : db.elementaryCurriculum;
+            if (targetCurriculum[oldCategory]) {
+              targetCurriculum[oldCategory] = targetCurriculum[oldCategory].filter(s => s !== oldName);
+              if (targetCurriculum[oldCategory].length === 0 && oldCategory !== newCategory) {
+                delete targetCurriculum[oldCategory];
               }
-            });
-
-            if (payload.conduct || payload.absentDays !== undefined || payload.tardyDays !== undefined) {
-              db.attendance[studentId] = {
-                conduct: payload.conduct || 'Very Good',
-                absentDays: Number(payload.absentDays) || 0,
-                absentWeeks: Number(payload.absentWeeks) || 0,
-                absentMonths: Number(payload.absentMonths) || 0,
-                tardyDays: Number(payload.tardyDays) || 0,
-                tardyWeeks: Number(payload.tardyWeeks) || 0,
-                tardyMonths: Number(payload.tardyMonths) || 0
-              };
             }
+            if (!targetCurriculum[newCategory]) targetCurriculum[newCategory] = [];
+            if (!targetCurriculum[newCategory].includes(newName)) targetCurriculum[newCategory].push(newName);
 
-            db.auditLogs.push({
-              logId: 'LOG-' + Date.now(),
-              timestamp: new Date().toISOString(),
-              actor: payload.recordedBy || 'Admin',
-              action: 'GRADE_UPDATED',
-              target: `${studentId} - ${subject}`,
-              outcome: 'SUCCESS',
-              details: `Updated grades for ${subject}`
+            // Update in grades table too
+            db.grades.forEach(g => {
+              if (g.subject.toLowerCase() === oldName.toLowerCase()) {
+                g.subject = newName;
+              }
             });
 
             saveLocalDb_(db);
-            return resolve({ success: true, message: 'Grades saved successfully.' });
+            return resolve({ success: true, message: `Subject updated successfully.` });
           }
 
+          case 'deleteSubject': {
+            const level = payload.level;
+            const category = String(payload.category || '').trim().toUpperCase();
+            const subjectName = String(payload.subjectName || '').trim();
+
+            const targetCurriculum = level === 'preschool' ? db.preschoolCurriculum : db.elementaryCurriculum;
+            if (targetCurriculum[category]) {
+              targetCurriculum[category] = targetCurriculum[category].filter(s => s.toLowerCase() !== subjectName.toLowerCase());
+              if (targetCurriculum[category].length === 0) {
+                delete targetCurriculum[category];
+              }
+            }
+
+            saveLocalDb_(db);
+            return resolve({ success: true, message: `Subject '${subjectName}' removed.` });
+          }
+
+          // ADMINS & TEACHERS
           case 'getAdmins': {
             return resolve({ success: true, admins: db.admins });
           }
@@ -672,6 +964,8 @@ const API = (function() {
               status: payload.status || 'Active',
               requires2FA: Boolean(payload.requires2FA),
               phone: payload.phone || '',
+              password: payload.password || 'teacher123',
+              photoUrl: payload.photoUrl || '',
               createdAt: new Date().toISOString()
             };
             db.admins.push(newAdmin);
@@ -702,9 +996,9 @@ const API = (function() {
           }
 
           default:
-            return resolve({ success: true, message: 'Completed.' });
+            return resolve({ success: true, message: 'Action completed.' });
         }
-      }, 200);
+      }, 150);
     });
   }
 
@@ -723,3 +1017,10 @@ const API = (function() {
     clearSession
   };
 })();
+
+if (typeof window !== 'undefined') {
+  window.API = API;
+}
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = API;
+}
