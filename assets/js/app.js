@@ -540,15 +540,19 @@ const LOLCA_APP = (function () {
   }
 
   async function installWebApp() {
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+      API.toast('LOLCA Web App is already installed and running in app mode!');
+      return;
+    }
     if (state.deferredPrompt) {
       state.deferredPrompt.prompt();
       const choice = await state.deferredPrompt.userChoice;
-      if (choice.outcome === 'accepted') {
+      if (choice && choice.outcome === 'accepted') {
         API.toast('LOLCA Web App installed successfully!');
       }
       state.deferredPrompt = null;
     } else {
-      API.toast('To install LOLCA on PC/Mobile: click your browser menu (⋮ or ⋯) and select "Install LOLCA" or "Add to Home Screen".');
+      API.toast('To install LOLCA: Tap your browser menu (⋮ or ⋯) and select "Install App" or "Add to Home Screen".');
     }
   }
 
@@ -793,33 +797,17 @@ const LOLCA_APP = (function () {
   }
 
   /* =======================================================================
-     DASHBOARD TAB CONTROLLER
+     DASHBOARD TAB CONTROLLER (ACADEMIC & ENROLLMENT OVERVIEW)
      ======================================================================= */
   async function loadDashboardStats() {
-    // 1. Fetch Finance Summary & Counts
-    const resFin = await API.request('getFinanceSummary', {}, 'GET');
-    if (resFin.success && resFin.summary) {
-      const sm = resFin.summary;
-      const revEl = document.getElementById('dashTotalRevenue');
-      const spentEl = document.getElementById('dashTotalSpent');
-      const balEl = document.getElementById('dashNetBalance');
-
-      if (revEl) revEl.textContent = `$${Number(sm.totalRevenue).toLocaleString()}`;
-      if (spentEl) spentEl.textContent = `$${Number(sm.grandTotalSpent).toLocaleString()}`;
-      if (balEl) {
-        balEl.textContent = `$${Number(sm.netBalance).toLocaleString()}`;
-        balEl.style.color = sm.netBalance >= 0 ? '#15803d' : '#ef4444';
-      }
-    }
-
-    // 2. Fetch Student Count
+    // 1. Fetch Student Count
     const resSt = await API.request('getStudents', {}, 'GET');
     if (resSt.success) {
       const stEl = document.getElementById('dashTotalStudents');
       if (stEl) stEl.textContent = resSt.total || (resSt.students ? resSt.students.length : 0);
     }
 
-    // 3. Fetch Staff Count
+    // 2. Fetch Staff Count
     const resStaff = await API.request('getStaff', {}, 'GET');
     if (resStaff.success && resStaff.staff) {
       const staffEl = document.getElementById('dashTotalStaff');
