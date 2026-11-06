@@ -186,7 +186,7 @@
             <span class="top-nav-title" id="pageHeaderTitle">Primary Portal Dashboard</span>
           </div>
           <div class="top-nav-right" style="display:flex; align-items:center; gap:8px;">
-            <button type="button" id="btnTopDownloadApp" class="btn btn-secondary btn-sm" title="Install App">
+            <button type="button" id="btnTopDownloadApp" class="btn btn-secondary btn-sm" onclick="LOLCA_APP.installWebApp()" title="Install App on Device">
               <img src="assets/icons/download (2).png" class="sys-icon" alt="Download">
               Download App
             </button>
@@ -215,35 +215,6 @@
             <div class="dashboard-heading-box no-print">
               <h2>Primary Portal Dashboard</h2>
               <span class="text-muted" style="font-size:13px;">Light of Life Christian Academy &bull; Academic Year 2025-2026</span>
-            </div>
-
-            <!-- Global Quick Stats -->
-            <div class="finance-summary-grid no-print" style="margin-bottom:20px;">
-              <div class="finance-stat-card stat-revenue">
-                <span class="finance-stat-label">Total Students</span>
-                <span class="finance-stat-amount" id="dashTotalStudents">0</span>
-                <span class="finance-stat-sub">Enrolled across 9 classes</span>
-              </div>
-              <div class="finance-stat-card stat-net">
-                <span class="finance-stat-label">Active Staff</span>
-                <span class="finance-stat-amount" id="dashTotalStaff">0</span>
-                <span class="finance-stat-sub">Teachers & Support Team</span>
-              </div>
-              <div class="finance-stat-card stat-revenue">
-                <span class="finance-stat-label">Total Revenue Raised</span>
-                <span class="finance-stat-amount" id="dashTotalRevenue">$0</span>
-                <span class="finance-stat-sub">Student tuition & fees paid</span>
-              </div>
-              <div class="finance-stat-card stat-expense">
-                <span class="finance-stat-label">Total Spent (Expenses + Payroll)</span>
-                <span class="finance-stat-amount" id="dashTotalSpent">$0</span>
-                <span class="finance-stat-sub">Operations & salaries</span>
-              </div>
-              <div class="finance-stat-card stat-payroll">
-                <span class="finance-stat-label">Net School Balance</span>
-                <span class="finance-stat-amount" id="dashNetBalance">$0</span>
-                <span class="finance-stat-sub">Real-time revenue minus spent</span>
-              </div>
             </div>
 
             <!-- Image 5 Style Cards Grid -->
@@ -879,7 +850,7 @@
                     Install this School Management System on your Windows PC, Android, Mac, or iOS home screen for instant, one-click access and offline capability.
                   </p>
                 </div>
-                <button type="button" id="btnInstallAppAdmin" class="btn btn-secondary" style="background:#ffffff; color:#1e3a8a; font-weight:800; border:none; padding:12px 24px; font-size:14px; box-shadow:0 4px 6px rgba(0,0,0,0.15);">
+                <button type="button" id="btnInstallAppAdmin" class="btn btn-secondary" onclick="LOLCA_APP.installWebApp()" style="background:#ffffff; color:#1e3a8a; font-weight:800; border:none; padding:12px 24px; font-size:14px; box-shadow:0 4px 6px rgba(0,0,0,0.15); cursor:pointer;">
                   <img src="assets/icons/download (2).png" class="sys-icon" alt="Download">
                   Download / Install App
                 </button>
