@@ -6,7 +6,8 @@
  */
 
 window.APP_CONFIG = {
-  backendUrl: "https://script.google.com/macros/s/AKfycbz3UwuOwE6nHqYwkyj_8L1rus8Qr2hgwFIzv5fGre8eR2KGp3vYYmw9dgYMpEgQxKHv4g/exec",
+  // Backend Google Apps Script Web App URL (paste your deployed Apps Script URL here, e.g. "https://script.google.com/macros/s/.../exec")
+  backendUrl: "",
 
   schoolName: "Light of Life Christian Academy (LOLCA)",
   schoolShortName: "LOLCA",

@@ -15,7 +15,12 @@ const API = (function () {
     const configUrl = String((window.APP_CONFIG && window.APP_CONFIG.backendUrl) || '').trim();
     if (configUrl) return configUrl;
 
-    // If running in browser over HTTP/HTTPS, use relative API endpoint
+    // If running on GitHub Pages and no backendUrl is configured
+    if (typeof window !== 'undefined' && window.location && window.location.hostname.includes('github.io')) {
+      return '';
+    }
+
+    // If running in local browser over HTTP/HTTPS, use relative API endpoint
     if (typeof window !== 'undefined' && window.location && window.location.origin) {
       if (window.location.protocol.startsWith('http')) {
         return `${window.location.origin}/api`;
@@ -100,6 +105,14 @@ const API = (function () {
    */
   async function request(action, payload = {}, method = 'POST') {
     const backendUrl = getBackendUrl();
+    if (!backendUrl) {
+      toast('Please set your Google Apps Script Web App URL in assets/js/config.js (backendUrl) to connect to your Google Sheets database.', true);
+      return {
+        success: false,
+        message: 'Google Apps Script Web App URL not set in assets/js/config.js.'
+      };
+    }
+
     showLoader();
 
     try {
@@ -110,17 +123,19 @@ const API = (function () {
         const queryParams = new URLSearchParams(Object.assign({ action: action, sessionToken: token }, payload));
         const url = `${backendUrl}?${queryParams.toString()}`;
         response = await fetch(url, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json'
-          }
+          method: 'GET'
         });
       } else {
         const bodyData = Object.assign({ action: action, sessionToken: token }, payload);
+        const isAppsScript = backendUrl.includes('script.google.com');
+
+        // text/plain prevents CORS preflight (OPTIONS check) for Google Apps Script Web Apps
+        const contentType = isAppsScript ? 'text/plain;charset=utf-8' : 'application/json;charset=utf-8';
+
         response = await fetch(backendUrl, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json;charset=utf-8'
+            'Content-Type': contentType
           },
           body: JSON.stringify(bodyData)
         });
@@ -137,13 +152,17 @@ const API = (function () {
       hideLoader();
       console.error(`Database request failed for '${action}':`, err);
 
-      // Helpful troubleshooting guidance when local server is offline
+      // Helpful troubleshooting guidance
       const isConnectionRefused = err.message && (err.message.includes('Failed to fetch') || err.message.includes('NetworkError'));
       if (isConnectionRefused) {
-        toast('Database Server offline! Please run "npm start" or double-click "start.bat" to start the LOLCA database.', true);
+        if (backendUrl.includes('script.google.com')) {
+          toast('Could not connect to Google Apps Script. Please verify Web App deployment access is set to "Anyone".', true);
+        } else {
+          toast('Database Server offline! Please run "npm start" or double-click "start.bat" to start the LOLCA database.', true);
+        }
         return {
           success: false,
-          message: 'Could not connect to the LOLCA database server at ' + backendUrl + '. Please ensure the server is running (double click start.bat).'
+          message: 'Could not connect to the LOLCA database server at ' + backendUrl
         };
       }
 
