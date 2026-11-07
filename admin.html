@@ -9,6 +9,21 @@
   <meta name="theme-color" content="#1e3a8a">
   <link rel="stylesheet" href="assets/css/tokens.css">
   <link rel="stylesheet" href="assets/css/styles.css">
+  <script>
+    window.__pwaInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      window.__pwaInstallPrompt = e;
+      if (window.LOLCA_APP && typeof window.LOLCA_APP.onInstallPromptReady === 'function') {
+        window.LOLCA_APP.onInstallPromptReady(e);
+      }
+    });
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
+      });
+    }
+  </script>
 </head>
 <body>
 
@@ -185,7 +200,17 @@
           <div class="top-nav-left">
             <span class="top-nav-title" id="pageHeaderTitle">Primary Portal Dashboard</span>
           </div>
-          <div class="top-nav-right" style="display:flex; align-items:center; gap:8px;">
+          <div class="top-nav-right" style="display:flex; align-items:center; gap:10px;">
+            <div class="global-year-selector" style="display:flex; align-items:center; gap:6px; background:#f1f5f9; padding:4px 12px; border-radius:9999px; border:1px solid #cbd5e1;">
+              <span style="font-size:11px; font-weight:800; text-transform:uppercase; color:#0369a1; letter-spacing:0.5px;">Session:</span>
+              <select id="globalAcademicYearSelect" class="select-field" style="width:auto; padding:3px 8px; font-size:12px; font-weight:800; border:none; background:transparent; cursor:pointer; color:#1e293b;">
+                <option value="2026/2027" selected>2026/2027</option>
+                <option value="2027/2028">2027/2028</option>
+                <option value="2028/2029">2028/2029</option>
+                <option value="2029/2030">2029/2030</option>
+                <option value="2030/2031">2030/2031</option>
+              </select>
+            </div>
             <button type="button" id="btnTopDownloadApp" class="btn btn-secondary btn-sm" onclick="LOLCA_APP.installWebApp()" title="Install App on Device">
               <img src="assets/icons/download (2).png" class="sys-icon" alt="Download">
               Download App
@@ -433,6 +458,25 @@
               </div>
 
               <div class="content-box-body">
+                <!-- Dynamic Student Statistics Breakdown -->
+                <div class="finance-summary-grid no-print" style="margin-bottom:16px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                  <div class="finance-stat-card stat-revenue" style="padding:14px 18px;">
+                    <span class="finance-stat-label">Total Enrolled</span>
+                    <span class="finance-stat-amount" id="statStudentsTotal">0</span>
+                    <span class="finance-stat-sub" id="statStudentsScope">All Classes</span>
+                  </div>
+                  <div class="finance-stat-card" style="padding:14px 18px; border-left:4px solid #0284c7;">
+                    <span class="finance-stat-label">Total Male</span>
+                    <span class="finance-stat-amount" id="statStudentsMale" style="color:#0284c7;">0</span>
+                    <span class="finance-stat-sub" id="statStudentsMalePercent">0%</span>
+                  </div>
+                  <div class="finance-stat-card" style="padding:14px 18px; border-left:4px solid #db2777;">
+                    <span class="finance-stat-label">Total Female</span>
+                    <span class="finance-stat-amount" id="statStudentsFemale" style="color:#db2777;">0</span>
+                    <span class="finance-stat-sub" id="statStudentsFemalePercent">0%</span>
+                  </div>
+                </div>
+
                 <!-- Filter Bar -->
                 <div class="toolbar-row" style="background:#f8fafc; padding:12px 16px; border-radius:6px; border:1px solid #e2e8f0; margin-bottom:16px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
                   <input type="text" id="studentSearch" class="input-field" placeholder="Search by student ID, student name, or guardian..." style="max-width:320px;">
@@ -467,6 +511,7 @@
                   <table class="data-table">
                     <thead>
                       <tr>
+                        <th style="width:40px; text-align:center;" title="Click to view payment breakdown">Pay</th>
                         <th style="width:48px;">Photo</th>
                         <th>Student Name</th>
                         <th>Student ID</th>
@@ -479,7 +524,7 @@
                       </tr>
                     </thead>
                     <tbody id="studentsTableBody">
-                      <tr><td colspan="9" class="text-center text-muted" style="padding:24px;">Loading student records...</td></tr>
+                      <tr><td colspan="10" class="text-center text-muted" style="padding:24px;">Loading student records...</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -883,10 +928,6 @@
                   <button type="button" class="btn btn-secondary" onclick="LOLCA_APP.shareLink('admin', 'copy')">
                     <img src="assets/icons/file-text.png" class="sys-icon" alt="Copy">
                     Copy Staff Portal Link
-                  </button>
-                  <button type="button" class="btn btn-secondary" onclick="LOLCA_APP.shareLink('student', 'copy')" style="margin-left:auto;">
-                    <img src="assets/icons/circle-user-round.png" class="sys-icon" alt="Student">
-                    Copy Student Portal Link
                   </button>
                 </div>
               </div>
@@ -1586,11 +1627,6 @@
           <button type="button" class="btn btn-secondary" onclick="LOLCA_APP.shareLink('admin', 'copy')">
             <img src="assets/icons/file-text.png" class="sys-icon" alt="Copy">
             Copy Staff Portal Link to Clipboard
-          </button>
-          <hr style="border:0; border-top:1px solid #e2e8f0; margin:4px 0;">
-          <button type="button" class="btn btn-secondary" onclick="LOLCA_APP.shareLink('student', 'copy')">
-            <img src="assets/icons/circle-user-round.png" class="sys-icon" alt="Student">
-            Copy Student Portal Link to Clipboard
           </button>
         </div>
       </div>

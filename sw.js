@@ -3,7 +3,7 @@
  * Caches assets for offline performance and supports PWA device installation.
  */
 
-const CACHE_NAME = 'lolca-cache-v2';
+const CACHE_NAME = 'lolca-cache-v3';
 const STATIC_ASSETS = [
   './',
   'index.html',
@@ -14,6 +14,8 @@ const STATIC_ASSETS = [
   'assets/js/config.js',
   'assets/js/api.js',
   'assets/js/app.js',
+  'assets/images/icon-192.png',
+  'assets/images/icon-512.png',
   'assets/images/LOLCA logo circle shape.png',
   'manifest-admin.json',
   'manifest-student.json'

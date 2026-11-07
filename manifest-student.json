@@ -3,19 +3,23 @@
   "short_name": "LOLCA Student",
   "description": "Student grade report card and payment receipt portal for Light of Life Christian Academy",
   "start_url": "student.html",
+  "scope": "./",
+  "id": "lolca-student-portal",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0284c7",
   "icons": [
     {
-      "src": "assets/icons/user.png",
+      "src": "assets/images/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "assets/images/LOLCA logo circle shape.png",
+      "src": "assets/images/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }

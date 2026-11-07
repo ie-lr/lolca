@@ -51,33 +51,187 @@ body {
   object-fit: contain;
 }
 
-/* Buttons */
+/* Modern Capsule / Pill Buttons (matching UI image style) */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
   font-family: inherit;
-  font-size: 13.5px;
-  font-weight: 600;
-  padding: 9px 16px;
-  border-radius: 6px;
-  border: 1px solid transparent;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 10px 22px;
+  border-radius: 9999px;
+  border: none;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
   text-decoration: none;
   line-height: 1.2;
+  position: relative;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16), inset 0 -3px 0 rgba(0, 0, 0, 0.2);
 }
-.btn:disabled { opacity: 0.6; cursor: not-allowed; }
-.btn-primary { background-color: #0284c7; color: #ffffff; }
-.btn-primary:hover:not(:disabled) { background-color: #0369a1; }
-.btn-accent { background-color: #f59e0b; color: #ffffff; }
-.btn-accent:hover:not(:disabled) { background-color: #d97706; }
-.btn-danger { background-color: #ef4444; color: #ffffff; }
-.btn-danger:hover:not(:disabled) { background-color: #dc2626; }
-.btn-secondary { background-color: #ffffff; color: #1e293b; border-color: #cbd5e1; }
-.btn-secondary:hover:not(:disabled) { background-color: #f8fafc; border-color: #94a3b8; }
-.btn-sm { font-size: 12px; padding: 5px 10px; border-radius: 4px; }
+.btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  filter: brightness(1.08);
+  box-shadow: 0 7px 18px rgba(0, 0, 0, 0.22), inset 0 -3px 0 rgba(0, 0, 0, 0.22);
+}
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18), inset 0 -1px 0 rgba(0, 0, 0, 0.25);
+}
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Color Themes Matching Uploaded Pill Button Palette */
+.btn-primary {
+  background: linear-gradient(180deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4), inset 0 -3px 0 rgba(0, 0, 0, 0.25);
+}
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #0ea5e9 0%, #0284c7 100%);
+  box-shadow: 0 7px 20px rgba(2, 132, 199, 0.5), inset 0 -3px 0 rgba(0, 0, 0, 0.25);
+}
+
+.btn-accent, .btn-orange {
+  background: linear-gradient(180deg, #f97316 0%, #ea580c 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(249, 115, 22, 0.4), inset 0 -3px 0 rgba(0, 0, 0, 0.25);
+}
+.btn-accent:hover:not(:disabled), .btn-orange:hover:not(:disabled) {
+  background: linear-gradient(180deg, #fb923c 0%, #f97316 100%);
+  box-shadow: 0 7px 20px rgba(249, 115, 22, 0.5), inset 0 -3px 0 rgba(0, 0, 0, 0.25);
+}
+
+.btn-danger, .btn-pink {
+  background: linear-gradient(180deg, #e11d48 0%, #be123c 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(225, 29, 72, 0.4), inset 0 -3px 0 rgba(0, 0, 0, 0.25);
+}
+.btn-danger:hover:not(:disabled), .btn-pink:hover:not(:disabled) {
+  background: linear-gradient(180deg, #f43f5e 0%, #e11d48 100%);
+  box-shadow: 0 7px 20px rgba(225, 29, 72, 0.5), inset 0 -3px 0 rgba(0, 0, 0, 0.25);
+}
+
+.btn-purple {
+  background: linear-gradient(180deg, #9333ea 0%, #7e22ce 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(147, 51, 234, 0.4), inset 0 -3px 0 rgba(0, 0, 0, 0.25);
+}
+.btn-purple:hover:not(:disabled) {
+  background: linear-gradient(180deg, #a855f7 0%, #9333ea 100%);
+  box-shadow: 0 7px 20px rgba(147, 51, 234, 0.5), inset 0 -3px 0 rgba(0, 0, 0, 0.25);
+}
+
+.btn-teal {
+  background: linear-gradient(180deg, #0d9488 0%, #0f766e 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(13, 148, 136, 0.4), inset 0 -3px 0 rgba(0, 0, 0, 0.25);
+}
+.btn-teal:hover:not(:disabled) {
+  background: linear-gradient(180deg, #14b8a6 0%, #0d9488 100%);
+  box-shadow: 0 7px 20px rgba(13, 148, 136, 0.5), inset 0 -3px 0 rgba(0, 0, 0, 0.25);
+}
+
+.btn-success, .btn-green {
+  background: linear-gradient(180deg, #16a34a 0%, #15803d 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.4), inset 0 -3px 0 rgba(0, 0, 0, 0.25);
+}
+.btn-success:hover:not(:disabled), .btn-green:hover:not(:disabled) {
+  background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+  box-shadow: 0 7px 20px rgba(22, 163, 74, 0.5), inset 0 -3px 0 rgba(0, 0, 0, 0.25);
+}
+
+.btn-secondary {
+  background: linear-gradient(180deg, #475569 0%, #334155 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(51, 65, 85, 0.35), inset 0 -3px 0 rgba(0, 0, 0, 0.25);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #64748b 0%, #475569 100%);
+  box-shadow: 0 7px 20px rgba(51, 65, 85, 0.45), inset 0 -3px 0 rgba(0, 0, 0, 0.25);
+}
+
+.btn-sm {
+  font-size: 11px;
+  padding: 6px 14px;
+  letter-spacing: 0.5px;
+  gap: 6px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.14), inset 0 -2px 0 rgba(0, 0, 0, 0.2);
+}
+
+/* Circular Arrow Badge like in Reference Image */
+.btn-arrow-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.8px solid rgba(255, 255, 255, 0.85);
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  margin-left: 2px;
+  background: rgba(255, 255, 255, 0.15);
+  transition: transform 0.2s ease;
+}
+.btn:hover .btn-arrow-circle {
+  transform: translateX(2px);
+  background: rgba(255, 255, 255, 0.28);
+}
+
+/* (+) Expand Button for Student Payment Rows */
+.btn-expand-payments {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  font-weight: 900;
+  font-size: 15px;
+  line-height: 1;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.btn-expand-payments:hover {
+  transform: scale(1.15);
+  background: linear-gradient(180deg, #0ea5e9 0%, #0284c7 100%);
+}
+.btn-expand-payments.expanded {
+  background: linear-gradient(180deg, #e11d48 0%, #be123c 100%);
+  box-shadow: 0 2px 6px rgba(225, 29, 72, 0.4);
+  transform: rotate(45deg);
+}
+
+/* Nested Student Payment Row Accordion */
+.student-payment-accordion-row {
+  background-color: #f8fafc;
+  transition: all 0.3s ease;
+}
+.student-payment-accordion-row td {
+  padding: 12px 18px !important;
+  border-bottom: 2px solid #e2e8f0;
+}
+.student-payment-card {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 14px 18px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
 
 /* Form Controls */
 .form-group { margin-bottom: 14px; text-align: left; }

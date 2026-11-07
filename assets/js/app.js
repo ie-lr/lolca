@@ -15,12 +15,14 @@ const LOLCA_APP = (function () {
     currentUser: null,
     userType: null, // 'admin', 'teacher', 'student'
     activeTab: 'dashboard',
+    selectedAcademicYear: '2026/2027',
     pending2FA: { email: '', tempToken: '', rememberMe: false, countdown: 60, timer: null },
     studentsCache: [],
     adminsCache: [],
     staffCache: [],
     expensesCache: [],
     payrollCache: [],
+    studentPaymentsCache: {},
     selectedStudentForPayment: null,
     selectedStudentForReport: null,
     deferredPrompt: null
@@ -30,9 +32,18 @@ const LOLCA_APP = (function () {
      APPLICATION INITIALIZATION & ROUTING
      ======================================================================= */
   async function init() {
+    // Purge any legacy localStorage database items so system depends purely on backend database
+    ['lolca_database', 'lolca_financial_records', 'lolca_expenses', 'lolca_students', 'lolca_staff', 'lolca_payroll', 'lolca_grades'].forEach(k => {
+      try {
+        localStorage.removeItem(k);
+        sessionStorage.removeItem(k);
+      } catch (e) {}
+    });
+
     setupPwaInstallListener();
     setupEventHandlers();
     setupImageUploadHandlers();
+    setupGlobalAcademicYearSelector();
 
     const path = window.location.pathname.toLowerCase();
 
@@ -194,6 +205,47 @@ const LOLCA_APP = (function () {
     const assigned = state.currentUser.assignedSubjects || [];
     if (assigned.includes('all')) return allSubjects;
     return allSubjects.filter(s => assigned.includes(s));
+  }
+
+  /* =======================================================================
+     GLOBAL ACADEMIC YEAR SELECTOR & SESSION ISOLATION
+     ======================================================================= */
+  function setupGlobalAcademicYearSelector() {
+    const sel = document.getElementById('globalAcademicYearSelect');
+    if (!sel) return;
+    sel.value = state.selectedAcademicYear;
+    sel.addEventListener('change', (e) => {
+      state.selectedAcademicYear = e.target.value;
+      const sub = document.getElementById('dashAcademicYearSubtitle');
+      if (sub) {
+        sub.textContent = `Light of Life Christian Academy • Academic Year ${state.selectedAcademicYear}`;
+      }
+      API.toast(`Switched to Academic Year ${state.selectedAcademicYear}`);
+      refreshCurrentTabForAcademicYear();
+    });
+  }
+
+  function refreshCurrentTabForAcademicYear() {
+    state.studentPaymentsCache = {};
+    if (state.activeTab === 'students') {
+      loadStudentsTable();
+    } else if (state.activeTab === 'grades') {
+      loadGradesMarksheet();
+    } else if (state.activeTab === 'finance') {
+      loadFinanceTab();
+    } else if (state.activeTab === 'payroll') {
+      const yearInp = document.getElementById('payrollYearFilter');
+      if (yearInp) {
+        yearInp.value = state.selectedAcademicYear.split('/')[0] || '2026';
+      }
+      loadPayrollTab();
+    } else if (state.activeTab === 'reports') {
+      initReportsSection();
+    } else if (state.activeTab === 'subjects') {
+      loadSubjectsView();
+    } else if (state.activeTab === 'feesSchedule') {
+      loadFeesScheduleView();
+    }
   }
 
   /* =======================================================================
@@ -524,12 +576,17 @@ const LOLCA_APP = (function () {
   }
 
   /* =======================================================================
-     PWA WEB APP INSTALLATION CONTROLLER
+     PWA WEB APP INSTALLATION CONTROLLER (INSTANT ONE-CLICK INSTALL)
      ======================================================================= */
   function setupPwaInstallListener() {
+    if (window.__pwaInstallPrompt) {
+      state.deferredPrompt = window.__pwaInstallPrompt;
+    }
+
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       state.deferredPrompt = e;
+      window.__pwaInstallPrompt = e;
       const bAdmin = document.getElementById('btnInstallAppAdmin');
       const bTop = document.getElementById('btnTopDownloadApp');
       const bStudent = document.getElementById('btnStudentInstallApp');
@@ -537,23 +594,50 @@ const LOLCA_APP = (function () {
       if (bTop) bTop.style.display = 'inline-flex';
       if (bStudent) bStudent.style.display = 'inline-flex';
     });
+
+    window.addEventListener('appinstalled', () => {
+      state.deferredPrompt = null;
+      window.__pwaInstallPrompt = null;
+      API.toast('LOLCA School App installed successfully!');
+    });
+  }
+
+  function onInstallPromptReady(e) {
+    state.deferredPrompt = e;
+    window.__pwaInstallPrompt = e;
   }
 
   async function installWebApp() {
-    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
-      API.toast('LOLCA Web App is already installed and running in app mode!');
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                         window.navigator.standalone === true;
+    if (isStandalone) {
+      API.toast('LOLCA School App is already installed on this device.');
       return;
     }
-    if (state.deferredPrompt) {
-      state.deferredPrompt.prompt();
-      const choice = await state.deferredPrompt.userChoice;
-      if (choice && choice.outcome === 'accepted') {
-        API.toast('LOLCA Web App installed successfully!');
-      }
-      state.deferredPrompt = null;
-    } else {
-      API.toast('To install LOLCA: Tap your browser menu (⋮ or ⋯) and select "Install App" or "Add to Home Screen".');
+
+    let promptEvent = state.deferredPrompt || window.__pwaInstallPrompt;
+
+    if (!promptEvent) {
+      await new Promise(r => setTimeout(r, 600));
+      promptEvent = state.deferredPrompt || window.__pwaInstallPrompt;
     }
+
+    if (promptEvent) {
+      try {
+        promptEvent.prompt();
+        const choice = await promptEvent.userChoice;
+        if (choice && choice.outcome === 'accepted') {
+          API.toast('LOLCA App successfully installed on your device!');
+        }
+        state.deferredPrompt = null;
+        window.__pwaInstallPrompt = null;
+      } catch (err) {
+        console.error('Install prompt error:', err);
+      }
+      return;
+    }
+
+    API.toast('Install prompt is ready. Click again or tap Install from your browser bar.');
   }
 
   /* =======================================================================
@@ -791,28 +875,23 @@ const LOLCA_APP = (function () {
     const roleEl = document.getElementById('sidebarUserRole');
     const avatarEl = document.getElementById('sidebarUserAvatar');
 
-    if (nameEl) nameEl.textContent = user.fullName || user.email || 'Admin User';
+    let displayName = user.fullName || user.email || 'Admin User';
+    if (user.role === 'Super Admin' && (!user.fullName || user.fullName === 'Chris Nentorbor')) {
+      displayName = 'Pst. Jones';
+    }
+
+    if (nameEl) nameEl.textContent = displayName;
     if (roleEl) roleEl.textContent = user.role || 'Staff Admin';
     if (avatarEl && user.photoUrl) avatarEl.src = user.photoUrl;
   }
 
   /* =======================================================================
-     DASHBOARD TAB CONTROLLER (ACADEMIC & ENROLLMENT OVERVIEW)
+     DASHBOARD TAB CONTROLLER (CLEAN NAVIGATION TABS)
      ======================================================================= */
   async function loadDashboardStats() {
-    // 1. Fetch Student Count
-    const resSt = await API.request('getStudents', {}, 'GET');
-    if (resSt.success) {
-      const stEl = document.getElementById('dashTotalStudents');
-      if (stEl) stEl.textContent = resSt.total || (resSt.students ? resSt.students.length : 0);
-    }
-
-    // 2. Fetch Staff Count
-    const resStaff = await API.request('getStaff', {}, 'GET');
-    if (resStaff.success && resStaff.staff) {
-      const staffEl = document.getElementById('dashTotalStaff');
-      const activeStaff = resStaff.staff.filter(s => s.status === 'Active').length;
-      if (staffEl) staffEl.textContent = activeStaff;
+    const sub = document.getElementById('dashAcademicYearSubtitle');
+    if (sub) {
+      sub.textContent = `Light of Life Christian Academy • Academic Year ${state.selectedAcademicYear}`;
     }
   }
 
@@ -838,6 +917,7 @@ const LOLCA_APP = (function () {
 
     tbody.innerHTML = state.adminsCache.map(a => {
       const isSuper = a.email.toLowerCase() === 'chrisnentorbor@gmail.com' || a.role === 'Super Admin';
+      const displayName = isSuper && (!a.fullName || a.fullName === 'Chris Nentorbor') ? 'Pst. Jones' : (a.fullName || a.email);
       const perms = Array.isArray(a.permissions) ? a.permissions : [];
       const permBadges = perms.includes('all')
         ? '<span class="badge-status badge-active">Full System Access</span>'
@@ -849,7 +929,7 @@ const LOLCA_APP = (function () {
             <div style="display:flex; align-items:center; gap:8px;">
               <img src="${a.photoUrl || 'assets/icons/circle-user-round.png'}" class="user-avatar-sm" alt="Photo" style="object-fit:cover;">
               <div>
-                <strong>${escapeHtml(a.fullName || a.email)}</strong>
+                <strong>${escapeHtml(displayName)}</strong>
                 <div style="font-size:11px; color:#64748b;">${escapeHtml(a.email)}</div>
               </div>
             </div>
@@ -1156,32 +1236,57 @@ const LOLCA_APP = (function () {
     const genderFilter = document.getElementById('studentGenderFilter')?.value || 'All';
     const statusFilter = document.getElementById('studentStatusFilter')?.value || 'All';
 
-    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted" style="padding:24px;">Loading student records from database...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted" style="padding:24px;">Loading student records from database...</td></tr>';
 
     const res = await API.request('getStudents', {
       search,
       class: classFilter,
       gender: genderFilter,
-      status: statusFilter
+      status: statusFilter,
+      academicYear: state.selectedAcademicYear
     }, 'GET');
 
     if (!res.success) {
-      tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted" style="padding:24px; color:#ef4444;">${res.message || 'Error loading students.'}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted" style="padding:24px; color:#ef4444;">${res.message || 'Error loading students.'}</td></tr>`;
       return;
     }
 
     state.studentsCache = res.students || [];
 
+    // Calculate dynamic statistics
+    const totalCount = state.studentsCache.length;
+    const maleCount = state.studentsCache.filter(s => String(s.gender || '').trim().toLowerCase() === 'male').length;
+    const femaleCount = state.studentsCache.filter(s => String(s.gender || '').trim().toLowerCase() === 'female').length;
+    const malePct = totalCount > 0 ? Math.round((maleCount / totalCount) * 100) : 0;
+    const femalePct = totalCount > 0 ? Math.round((femaleCount / totalCount) * 100) : 0;
+
+    const elTotal = document.getElementById('statStudentsTotal');
+    const elMale = document.getElementById('statStudentsMale');
+    const elFemale = document.getElementById('statStudentsFemale');
+    const elScope = document.getElementById('statStudentsScope');
+    const elMalePct = document.getElementById('statStudentsMalePercent');
+    const elFemalePct = document.getElementById('statStudentsFemalePercent');
+
+    if (elTotal) elTotal.textContent = totalCount;
+    if (elMale) elMale.textContent = maleCount;
+    if (elFemale) elFemale.textContent = femaleCount;
+    if (elScope) elScope.textContent = classFilter === 'All' ? `All 9 Classes (${state.selectedAcademicYear})` : `${classFilter} (${state.selectedAcademicYear})`;
+    if (elMalePct) elMalePct.textContent = `${malePct}% of selected`;
+    if (elFemalePct) elFemalePct.textContent = `${femalePct}% of selected`;
+
     const badge = document.getElementById('studentCountBadge');
     if (badge) badge.textContent = `${state.studentsCache.length} enrolled`;
 
     if (!state.studentsCache.length) {
-      tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted" style="padding:24px;">No student records found matching filters.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted" style="padding:24px;">No student records found matching filters.</td></tr>';
       return;
     }
 
     tbody.innerHTML = state.studentsCache.map(s => `
-      <tr>
+      <tr id="studentRow_${s.studentId}">
+        <td style="width:40px; text-align:center;">
+          <button type="button" class="btn-expand-payments" id="btnExp_${s.studentId}" onclick="LOLCA_APP.toggleStudentPaymentsRow('${s.studentId}', this)" title="Show payment breakdown for ${escapeHtml(s.fullName)}">+</button>
+        </td>
         <td style="width:48px;">
           <img src="${s.photoUrl || 'assets/icons/circle-user-round.png'}" class="user-avatar-sm" alt="Photo" style="object-fit:cover;">
         </td>
@@ -1216,7 +1321,127 @@ const LOLCA_APP = (function () {
           </div>
         </td>
       </tr>
+      <tr id="paymentRow_${s.studentId}" class="student-payment-accordion-row hidden">
+        <td colspan="10" id="paymentContent_${s.studentId}">
+          <div class="text-muted" style="padding:12px; font-size:12.5px;">Loading payment details...</div>
+        </td>
+      </tr>
     `).join('');
+  }
+
+  async function toggleStudentPaymentsRow(studentId, btnEl) {
+    const row = document.getElementById(`paymentRow_${studentId}`);
+    const content = document.getElementById(`paymentContent_${studentId}`);
+    if (!row || !content) return;
+
+    const isHidden = row.classList.contains('hidden');
+    if (!isHidden) {
+      row.classList.add('hidden');
+      if (btnEl) {
+        btnEl.textContent = '+';
+        btnEl.classList.remove('expanded');
+      }
+      return;
+    }
+
+    row.classList.remove('hidden');
+    if (btnEl) {
+      btnEl.textContent = '−';
+      btnEl.classList.add('expanded');
+    }
+
+    content.innerHTML = '<div class="text-muted" style="padding:12px; font-size:12.5px;">Communicating with database for payment records...</div>';
+
+    const res = await API.request('getStudentPayments', {
+      studentId: studentId,
+      academicYear: state.selectedAcademicYear
+    }, 'GET');
+
+    if (!res.success) {
+      content.innerHTML = `<div style="padding:12px; color:#ef4444; font-size:12.5px;">${escapeHtml(res.message || 'Error loading payment records.')}</div>`;
+      return;
+    }
+
+    const payments = res.payments || [];
+    const totalTuition = Number(res.totalTuition || 0);
+    const totalPaid = Number(res.totalPaid || 0);
+    const balance = Number(res.balance || 0);
+
+    const paymentRowsHtml = payments.length > 0
+      ? payments.map(p => `
+          <tr style="background:#ffffff;">
+            <td>${escapeHtml(p.date || 'N/A')}</td>
+            <td><span class="badge-status badge-active" style="font-size:10.5px;">${escapeHtml(p.type || 'Tuition')}</span></td>
+            <td>${escapeHtml(p.installment || p.description || 'Installment')}</td>
+            <td><code style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-weight:700;">${escapeHtml(p.receiptNumber || 'REC-N/A')}</code></td>
+            <td style="font-weight:800; color:#15803d;">$${Number(p.amount || 0).toLocaleString()}</td>
+            <td>${escapeHtml(p.method || 'Cash')}</td>
+            <td><span class="text-muted" style="font-size:11.5px;">${escapeHtml(p.recordedBy || 'Admin')}</span></td>
+            <td>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="LOLCA_APP.viewStudentPayments('${studentId}')" title="Print Half A4 Official Receipt">
+                <img src="assets/icons/landmark.png" class="sys-icon" alt="Receipt">
+                Print
+              </button>
+            </td>
+          </tr>
+        `).join('')
+      : `<tr><td colspan="8" class="text-center text-muted" style="padding:16px;">No payment records found for this student in session ${escapeHtml(state.selectedAcademicYear)}.</td></tr>`;
+
+    content.innerHTML = `
+      <div class="student-payment-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid #e2e8f0;">
+          <div>
+            <strong style="color:#1e3a8a; font-size:14px;">Official Fee & Payment History &bull; ${escapeHtml(res.student?.fullName || studentId)}</strong>
+            <span class="text-muted" style="font-size:12px; margin-left:6px;">(${escapeHtml(res.student?.class || '')} &bull; ${escapeHtml(state.selectedAcademicYear)})</span>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" onclick="LOLCA_APP.openRecordPaymentModalForStudent('${studentId}')">
+            + Record Payment
+          </button>
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:10px; margin-bottom:14px;">
+          <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; padding:8px 12px;">
+            <div style="font-size:11px; text-transform:uppercase; color:#64748b; font-weight:700;">Total Tuition</div>
+            <div style="font-size:18px; font-weight:800; color:#1e293b;">$${totalTuition.toLocaleString()}</div>
+          </div>
+          <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:6px; padding:8px 12px;">
+            <div style="font-size:11px; text-transform:uppercase; color:#15803d; font-weight:700;">Total Paid</div>
+            <div style="font-size:18px; font-weight:800; color:#15803d;">$${totalPaid.toLocaleString()}</div>
+          </div>
+          <div style="background:#fef2f2; border:1px solid #fca5a5; border-radius:6px; padding:8px 12px;">
+            <div style="font-size:11px; text-transform:uppercase; color:#b91c1c; font-weight:700;">Remaining Balance</div>
+            <div style="font-size:18px; font-weight:800; color:${balance <= 0 ? '#15803d' : '#b91c1c'};">$${balance.toLocaleString()}</div>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table" style="font-size:12px;">
+            <thead>
+              <tr style="background:#f1f5f9;">
+                <th>Date</th>
+                <th>Fee Type</th>
+                <th>Description</th>
+                <th>Receipt #</th>
+                <th>Amount ($)</th>
+                <th>Method</th>
+                <th>Recorded By</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${paymentRowsHtml}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  function openRecordPaymentModalForStudent(studentId) {
+    state.selectedStudentForPayment = studentId;
+    const inpStId = document.getElementById('recordPayStudentId');
+    if (inpStId) inpStId.value = studentId;
+    openRecordPaymentModal();
   }
 
   function openAddStudentModal() {
@@ -2700,6 +2925,8 @@ const LOLCA_APP = (function () {
     openAddStudentModal,
     openEditStudentModal,
     confirmDeleteStudent,
+    toggleStudentPaymentsRow,
+    openRecordPaymentModalForStudent,
     viewStudentReportCard,
     viewStudentPayments,
     saveSingleStudentGrade,
@@ -2715,6 +2942,7 @@ const LOLCA_APP = (function () {
     openEditClassFeeModal,
     shareLink,
     installWebApp,
+    onInstallPromptReady,
     openModal,
     closeModal
   };

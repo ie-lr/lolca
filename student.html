@@ -9,6 +9,21 @@
   <meta name="theme-color" content="#1e3a8a">
   <link rel="stylesheet" href="assets/css/tokens.css">
   <link rel="stylesheet" href="assets/css/styles.css">
+  <script>
+    window.__pwaInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      window.__pwaInstallPrompt = e;
+      if (window.LOLCA_APP && typeof window.LOLCA_APP.onInstallPromptReady === 'function') {
+        window.LOLCA_APP.onInstallPromptReady(e);
+      }
+    });
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
+      });
+    }
+  </script>
 </head>
 <body>
 
@@ -104,7 +119,7 @@
         </div>
 
         <!-- Download Web App -->
-        <button type="button" class="btn btn-secondary btn-sm" id="btnStudentInstallApp" title="Download & install web app">
+        <button type="button" class="btn btn-secondary btn-sm" id="btnStudentInstallApp" onclick="LOLCA_APP.installWebApp()" title="Download & install web app">
           <img src="assets/icons/download (2).png" class="sys-icon" alt="Download">
           Download App
         </button>
